@@ -197,8 +197,8 @@
     <!-- МОДАЛКИ -->
     <div id="user-profile-modal" onclick="closeProfileModal()">
         <div class="profile-card" onclick="event.stopPropagation()">
-            <div class="avatar" id="profileModalAvatar">Р</div>
-            <h2 id="profileModalName">Рома</h2>
+            <div class="avatar" id="profileModalAvatar">A</div>
+            <h2 id="profileModalName">Собеседник</h2>
             <p style="color:#10b981; margin-bottom:20px;">в сети</p>
             <button onclick="closeProfileModal()" style="padding:10px 20px; background:#8b5cf6; border:none; border-radius:10px; color:white; cursor:pointer;">Закрыть</button>
         </div>
@@ -234,18 +234,18 @@
                 </div>
             </div>
             <div class="chat-list">
-                <div class="chat-item active" onclick="openChat(this, 'Рома', 'Р', 'online')">
-                    <div class="avatar">Р <div class="status-dot"></div></div>
+                <div class="chat-item active" onclick="openChat(this, 'Пользователь 1', 'П', 'online')">
+                    <div class="avatar">П <div class="status-dot"></div></div>
                     <div class="chat-info">
-                        <div class="chat-name">Рома</div>
-                        <div class="chat-last-msg">Давай в КС?</div>
+                        <div class="chat-name">Пользователь 1</div>
+                        <div class="chat-last-msg">Привет! Как дела?</div>
                     </div>
                 </div>
-                <div class="chat-item" onclick="openChat(this, 'Максим', 'М', 'offline')">
-                    <div class="avatar" style="background: linear-gradient(135deg, #ec4899, #f43f5e);">М <div class="status-dot" style="background:#64748b;"></div></div>
+                <div class="chat-item" onclick="openChat(this, 'Пользователь 2', 'П', 'offline')">
+                    <div class="avatar" style="background: linear-gradient(135deg, #ec4899, #f43f5e);">П <div class="status-dot" style="background:#64748b;"></div></div>
                     <div class="chat-info">
-                        <div class="chat-name">Максим</div>
-                        <div class="chat-last-msg">Скинь домашку</div>
+                        <div class="chat-name">Пользователь 2</div>
+                        <div class="chat-last-msg">Приветствую.</div>
                     </div>
                 </div>
             </div>
@@ -256,9 +256,9 @@
                 <button class="back-btn" onclick="event.stopPropagation(); closeChat()">←</button>
                 <div class="chat-header-avatar" id="headerAvatarContainer">
                     <img id="headerAvatarImg" src="" alt="Avatar">
-                    <span id="headerAvatarText">Р</span>
+                    <span id="headerAvatarText">П</span>
                 </div>
-                <div class="chat-header-info" id="headerName">Рома</div>
+                <div class="chat-header-info" id="headerName">Пользователь 1</div>
                 <div id="typingStatus" style="font-size:12px; color:#8b5cf6; margin-left:10px;"></div>
             </div>
             <div class="messages" id="messagesContainer"></div>
@@ -302,18 +302,18 @@
         let currentUser = localStorage.getItem('voxUser') || null;
         let userAvatarBase64 = localStorage.getItem('voxAvatar') || null;
         let chatData = JSON.parse(localStorage.getItem('voxChats')) || {
-            'Рома': [{ text: "О, привет! Как дела?", type: 'incoming', time: '14:20' }],
-            'Максим': [{ text: "Скинь домашку по математике", type: 'incoming', time: '12:05' }]
+            'Пользователь 1': [{ text: "Привет! Как дела?", type: 'incoming', time: '14:20' }],
+            'Пользователь 2': [{ text: "Приветствую.", type: 'incoming', time: '12:05' }]
         };
-        let currentChat = 'Рома';
+        let currentChat = 'Пользователь 1';
         let tempAvatarBase64 = null;
         let replyTo = null;
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
-        let isSending = false; // Защита от дублирования
+        let isSending = false;
 
-        // --- АВАТАРКА (Сжатие) ---
+        // --- АВАТАРКА ---
         function processAvatar(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -325,7 +325,7 @@
                     canvas.width = 80; canvas.height = 80;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, 80, 80);
-                    tempAvatarBase64 = canvas.toDataURL('image/jpeg', 0.6); // Сильное сжатие
+                    tempAvatarBase64 = canvas.toDataURL('image/jpeg', 0.6);
                     document.getElementById('authAvatarImg').src = tempAvatarBase64;
                     document.getElementById('authAvatarImg').style.display = 'block';
                     document.getElementById('authAvatarText').style.display = 'none';
@@ -457,7 +457,6 @@
             if (window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.add('hidden');
                 document.getElementById('chatArea').classList.add('active');
-                // БАГ ИСПРАВЛЕН: Используем replaceState, чтобы не плодить историю
                 history.replaceState({chat: name}, '', '#chat');
             }
             renderMessages();
@@ -466,13 +465,13 @@
         function closeChat() {
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('chatArea').classList.remove('active');
-            history.replaceState(null, '', window.location.pathname); // Очищаем хэш
+            history.replaceState(null, '', window.location.pathname);
         }
 
         window.addEventListener('popstate', () => { if (window.innerWidth <= 768) closeChat(); });
 
         function sendMessage() {
-            if (isSending) return; // Защита от двойного клика
+            if (isSending) return;
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if (!text) return;
@@ -492,7 +491,7 @@
             document.getElementById('typingStatus').innerText = 'печатает...';
             setTimeout(() => {
                 document.getElementById('typingStatus').innerText = '';
-                const replies = ["Согласен.", "Круто!", "Давай в КС?", "Ясно."];
+                const replies = ["Согласен.", "Круто!", "Давай потом?", "Ясно."];
                 const reply = replies[Math.floor(Math.random() * replies.length)];
                 chatData[currentChat].push({ text: reply, type: 'incoming', time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) });
                 localStorage.setItem('voxChats', JSON.stringify(chatData));
@@ -532,7 +531,7 @@
         function addEmoji(emoji) {
             const input = document.getElementById('msgInput');
             input.value += emoji;
-            input.focus(); // ИСПРАВЛЕНО: принудительный фокус
+            input.focus();
         }
 
         async function startVoiceRecord() {
