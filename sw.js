@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vox-cache-v2'; // Версия обновлена
+const CACHE_NAME = 'vox-cache-v5'; // v5
 const urlsToCache = [
     './',
     './index.html',
@@ -6,7 +6,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
-    self.skipWaiting(); // Принудительно активируем новый SW
+    self.skipWaiting(); 
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
     );
@@ -27,7 +27,6 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-    // Стратегия: Сеть в приоритете, кэш как запасной (чтобы обновления подгружались)
     event.respondWith(
         fetch(event.request).catch(() => caches.match(event.request))
     );
