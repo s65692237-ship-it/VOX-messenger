@@ -165,7 +165,7 @@
         .chat-last-msg { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--chat-bg); position: relative;}
-        .chat-header { padding: 15px 20px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; cursor: pointer;}
+        .chat-header { padding: 15px 20px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;}
         .chat-header-avatar { width: 35px; height: 35px; border-radius: 50%; margin-right: 10px; overflow: hidden; display: flex; justify-content: center; align-items: center; background: var(--sidebar-bg);}
         .chat-header-avatar img { width: 100%; height: 100%; object-fit: cover; display: none;}
         .chat-header-info { font-size: 16px; font-weight: 600; color: var(--text-main); }
@@ -220,7 +220,7 @@
         .edit-avatar-container span { font-size: 30px; color: var(--text-muted);}
 
         .privacy-content { width: 100%; max-width: 600px; max-height: 80vh; overflow-y: auto; text-align: left; }
-        .privacy-content p { color: var(--text-muted); margin-bottom: 10px; }
+        .privacy-content p { color: var(--text-muted); margin-bottom: 10px; line-height: 1.5; }
 
         /* Настройки */
         .settings-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: var(--text-main); }
@@ -319,7 +319,7 @@
                 </div>
             </div>
 
-            <button onclick="openPrivacy()" style="width:100%; margin-top:30px; padding:10px; background:var(--chat-bg); border:1px solid var(--border-color); border-radius:8px; color:var(--text-main); cursor:pointer;">Политика</button>
+            <button onclick="openPrivacy()" style="width:100%; margin-top:30px; padding:10px; background:var(--chat-bg); border:1px solid var(--border-color); border-radius:8px; color:var(--text-main); cursor:pointer;">Политика конфиденциальности</button>
             <button onclick="logout()" style="width:100%; margin-top:10px; padding:10px; background:#ef4444; border:none; border-radius:8px; color:white; cursor:pointer;">Выйти</button>
             <button onclick="closeSettings()" style="width:100%; margin-top:10px; padding:10px; background:var(--accent); border:none; border-radius:8px; color:white; cursor:pointer;">Закрыть</button>
         </div>
@@ -328,11 +328,14 @@
     <!-- МОДАЛКА ПОЛИТИКИ -->
     <div id="privacy-modal">
         <div class="modal-card privacy-content">
-            <h2>Политика конфиденциальности</h2>
-            <p>1. Мы не собираем ваши личные данные.</p>
-            <p>2. Сообщения хранятся локально на вашем устройстве.</p>
-            <p>3. Доступ к микрофону/галерее только с вашего разрешения.</p>
-            <button onclick="closePrivacy()" style="margin-top:20px; padding:10px 20px; background:var(--accent); border:none; border-radius:10px; color:white; cursor:pointer;">Закрыть</button>
+            <h2 style="color:var(--accent); margin-bottom:15px;">Политика конфиденциальности Vox Messenger</h2>
+            <p><strong>1. Сбор данных:</strong> Приложение не собирает, не передает и не хранит ваши личные данные (номера телефонов, email, паспортные данные).</p>
+            <p><strong>2. Локальное хранение:</strong> Все ваши сообщения, настройки и аватарки хранятся исключительно на вашем устройстве в локальном хранилище браузера (LocalStorage).</p>
+            <p><strong>3. Доступ к медиа:</strong> Приложение запрашивает доступ к микрофону (для записи голосовых) и галерее (для смены аватарки). Эти данные не покидают ваше устройство.</p>
+            <p><strong>4. Передача третьим лицам:</strong> Мы не передаем ваши данные рекламным сетям или третьим лицам.</p>
+            <p><strong>5. Удаление данных:</strong> Вы можете полностью удалить все свои данные, нажав кнопку "Выйти" в настройках профиля.</p>
+            <p><strong>6. Контакты:</strong> Если у вас есть вопросы, свяжитесь с нами в Telegram: @V0XPRM</p>
+            <button onclick="closePrivacy()" style="margin-top:20px; padding:10px 20px; background:var(--accent); border:none; border-radius:10px; color:white; cursor:pointer; width:100%;">Закрыть</button>
         </div>
     </div>
 
@@ -355,7 +358,8 @@
                 </div>
             </div>
             <div class="chat-list" id="chatList">
-                <!-- Чаты рендерятся здесь -->
+                <!-- Пустой список при первом входе -->
+                <div style="text-align:center; color:var(--text-muted); padding:20px; font-size:14px;">У вас пока нет чатов. Нажмите "+" чтобы добавить друга.</div>
             </div>
         </div>
 
@@ -364,12 +368,14 @@
                 <button class="back-btn" onclick="event.stopPropagation(); closeChat()">←</button>
                 <div class="chat-header-avatar" id="headerAvatarContainer">
                     <img id="headerAvatarImg" src="" alt="Avatar">
-                    <span id="headerAvatarText">П</span>
+                    <span id="headerAvatarText">?</span>
                 </div>
-                <div class="chat-header-info" id="headerName">Пользователь 1</div>
+                <div class="chat-header-info" id="headerName">Выберите чат</div>
                 <div id="typingStatus" style="font-size:12px; color:var(--accent); margin-left:10px;"></div>
             </div>
-            <div class="messages" id="messagesContainer"></div>
+            <div class="messages" id="messagesContainer">
+                 <div style="text-align:center; color:var(--text-muted); margin-top:50px;">Выберите чат для начала общения</div>
+            </div>
             
             <div class="sticker-panel" id="stickerPanel">
                 <img src="https://em-content.zobj.net/source/apple/391/grinning-face_1f600.png" onclick="sendSticker(this.src)">
@@ -406,21 +412,14 @@
             });
         }
 
-        // --- БАЗА ПОЛЬЗОВАТЕЛЕЙ (Имитация сервера) ---
-        let usersDB = JSON.parse(localStorage.getItem('voxUsersDB')) || {
-            'Рома': { avatar: null },
-            'Максим': { avatar: null },
-            'Костя': { avatar: null }
-        };
+        // --- БАЗА ПОЛЬЗОВАТЕЛЕЙ (Для проверки уникальности) ---
+        let usersDB = JSON.parse(localStorage.getItem('voxUsersDB')) || {};
 
-        // --- ТЕКУЩИЙ ПОЛЬЗОВАТЕЛЬ ---
+        // --- ДАННЫЕ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ ---
         let currentUser = localStorage.getItem('voxUser') || null;
         let userAvatarBase64 = localStorage.getItem('voxAvatar') || null;
-        let chatData = JSON.parse(localStorage.getItem('voxChats')) || {
-            'Рома': [{ text: "О, привет! Как дела?", type: 'incoming', time: '14:20' }],
-            'Максим': [{ text: "Скинь домашку по математике", type: 'incoming', time: '12:05' }]
-        };
-        let currentChat = 'Рома';
+        let chatData = JSON.parse(localStorage.getItem('voxChats')) || {}; // ПУСТОЙ СПИСОК ЧАТОВ!
+        let currentChat = null; // Никаких предустановленных чатов
         let tempAvatarBase64 = null;
         let replyTo = null;
         let mediaRecorder;
@@ -610,13 +609,17 @@
             const container = document.getElementById('chatList');
             container.innerHTML = '';
             
+            if (Object.keys(chatData).length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:20px; font-size:14px;">У вас пока нет чатов. Нажмите "+" чтобы добавить друга.</div>';
+                return;
+            }
+
             Object.keys(chatData).forEach(name => {
                 const messages = chatData[name];
                 const lastMsg = messages.length > 0 ? messages[messages.length - 1].text : 'Нет сообщений';
                 const shortLastMsg = lastMsg.length > 20 ? lastMsg.substring(0, 20) + '...' : lastMsg;
                 const avatarLetter = name[0].toUpperCase();
                 
-                // Проверяем, есть ли у друга аватарка
                 let friendAvatar = usersDB[name]?.avatar;
                 let avatarHTML = friendAvatar ? `<img src="${friendAvatar}" style="display:block">` : '';
 
@@ -625,7 +628,6 @@
                 div.dataset.name = name;
                 div.onclick = function() { openChat(this, name, avatarLetter, 'online'); };
                 
-                // Удаление через ПКМ или долгое нажатие
                 div.oncontextmenu = function(e) {
                     e.preventDefault();
                     if (confirm(`Удалить чат с ${name}?`)) {
@@ -669,7 +671,6 @@
             localStorage.setItem('voxFontSize', size);
         }
 
-        // Загрузка темы
         if (localStorage.getItem('voxTheme')) changeTheme(localStorage.getItem('voxTheme'));
         if (localStorage.getItem('voxFontSize')) changeFontSize(localStorage.getItem('voxFontSize'));
 
@@ -697,7 +698,7 @@
         function renderMessages() {
             const container = document.getElementById('messagesContainer');
             if (!currentChat || !chatData[currentChat]) {
-                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); margin-top:50px;">Выберите чат</div>';
+                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); margin-top:50px;">Выберите чат для начала общения</div>';
                 return;
             }
 
@@ -749,7 +750,6 @@
             document.getElementById('headerName').innerText = name;
             document.getElementById('headerAvatarText').innerText = avatarLetter;
             
-            // Устанавливаем аватарку в шапку, если есть
             let friendAvatar = usersDB[name]?.avatar;
             if(friendAvatar) {
                 document.getElementById('headerAvatarImg').src = friendAvatar;
