@@ -153,6 +153,16 @@
         .chat-header-info { font-size: 17px; font-weight: 600; color: var(--text-main); }
         .chat-header-status { font-size: 13px; color: var(--accent); }
         
+        /* Закрепленное сообщение */
+        .pinned-message {
+            background: var(--sidebar-bg); border-bottom: 1px solid var(--border-color);
+            padding: 8px 15px; display: none; align-items: center; gap: 10px; cursor: pointer;
+            font-size: 13px; color: var(--text-muted); z-index: 5;
+        }
+        .pinned-message.active { display: flex; }
+        .pinned-message-content { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid var(--accent); padding-left: 8px;}
+        .pinned-message-close { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;}
+
         .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth;}
         .message { max-width: 75%; display: flex; flex-direction: column; position: relative; animation: popIn 0.2s; touch-action: pan-y;}
         @keyframes popIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -169,6 +179,9 @@
         /* Reply (внутри пузыря) */
         .reply-quote { font-size: 12px; color: rgba(255,255,255,0.7); border-left: 2px solid rgba(255,255,255,0.5); padding-left: 8px; margin-bottom: 6px; font-style: italic; background: rgba(0,0,0,0.1); border-radius: 4px; padding: 4px 8px;}
         .message.incoming .reply-quote { color: var(--accent); border-left-color: var(--accent); background: rgba(139, 92, 246, 0.1); }
+
+        /* Пересланное сообщение */
+        .forwarded-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 5px; font-style: italic;}
         
         .reaction { position: absolute; bottom: -8px; background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 6px; font-size: 13px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);}
         .message.incoming .reaction { left: 10px; }
@@ -203,7 +216,7 @@
         #emojiPanel span:hover { background: rgba(139, 92, 246, 0.2);}
 
         /* Контекстное меню */
-        .ctx-menu { position: fixed; background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 5px; z-index: 5000; display: none; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 150px; backdrop-filter: var(--glass-effect); }
+        .ctx-menu { position: fixed; background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 5px; z-index: 5000; display: none; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 170px; backdrop-filter: var(--glass-effect); }
         .ctx-menu button { padding: 12px 15px; background: none; border: none; color: var(--text-main); text-align: left; cursor: pointer; border-radius: 8px; font-size: 14px; transition: 0.1s; display: flex; align-items: center; gap: 10px;}
         .ctx-menu button:hover { background: rgba(139, 92, 246, 0.2); }
 
@@ -264,7 +277,18 @@
         <button onclick="ctxReply()">↩️ Ответить</button>
         <button onclick="ctxReact()">❤️ Реакция</button>
         <button onclick="ctxEdit()" id="ctxEditBtn">✏️ Редактировать</button>
+        <button onclick="ctxForward()">➡️ Переслать</button>
+        <button onclick="ctxPin()" id="ctxPinBtn">📌 Закрепить</button>
         <button onclick="ctxDelete()" style="color:var(--danger);">🗑️ Удалить</button>
+    </div>
+
+    <!-- Модалка пересылки -->
+    <div class="modal-overlay" id="forward-modal" onclick="closeModal('forward-modal')">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <h2>Переслать в...</h2>
+            <div id="forwardList" style="text-align:left; max-height:300px; overflow-y:auto; margin-bottom:20px;"></div>
+            <button onclick="closeModal('forward-modal')" style="padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; width:100%; font-weight:600;">Отмена</button>
+        </div>
     </div>
 
     <div class="modal-overlay" id="edit-profile-modal" onclick="closeModal('edit-profile-modal')">
@@ -412,6 +436,13 @@
                 <button onclick="event.stopPropagation(); openSearchMessages()" style="background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted); margin-right:10px;">🔍</button>
                 <button id="inviteBtn" onclick="event.stopPropagation(); openInviteModal()" style="display:none; background:none; border:none; color:var(--accent); font-size:20px; cursor:pointer;">➕</button>
             </div>
+
+            <!-- Закрепленное сообщение -->
+            <div class="pinned-message" id="pinnedMessage">
+                <div class="pinned-message-content" id="pinnedMessageContent"></div>
+                <button class="pinned-message-close" onclick="unpinMessage()">✕</button>
+            </div>
+
             <div class="messages" id="messagesContainer">
                  <div style="text-align:center; color:var(--text-muted); margin-top:50px;">Выберите чат для начала общения</div>
             </div>
@@ -487,6 +518,7 @@
         let typingTimeout = null;
         let tempAvatarBase64 = null;
         let replyTo = null;
+        let forwardMsgData = null;
         let isSending = false;
         let unsubscribeMessages = null;
         let unsubscribeStatus = null;
@@ -785,6 +817,7 @@
 
             document.getElementById('headerName').innerText = friendName;
             document.getElementById('inviteBtn').style.display = isGroup ? 'block' : 'none';
+            document.getElementById('pinnedMessage').classList.remove('active');
             
             let avatarSrc = null;
             if (isGroup && groupsDB[friendID]) {
@@ -897,8 +930,11 @@
                 const isMine = msg.sender === userID;
                 div.className = `message ${isMine ? 'outgoing' : 'incoming'}`;
                 
+                // Пересланное
+                let forwardHTML = msg.forwarded ? `<div class="forwarded-label">➡️ Переслано</div>` : '';
+
                 let senderHTML = '';
-                if (isGroup && !isMine) {
+                if (isGroup && !isMine && !msg.forwarded) {
                     const senderName = msg.sender === 'VOX-BOT' ? 'Бот' : (usersDB[msg.sender]?.name || 'Юзер');
                     senderHTML = `<span class="sender-name">${senderName}</span>`;
                 }
@@ -915,11 +951,11 @@
                 }
                 
                 if (msg.type === 'voice') {
-                    div.innerHTML = `${senderHTML}<div class="msg-bubble"><audio controls src="${msg.text}"></audio><div class="msg-time">${msg.time} ${checkmark}</div></div>`;
+                    div.innerHTML = `${senderHTML}${forwardHTML}<div class="msg-bubble"><audio controls src="${msg.text}"></audio><div class="msg-time">${msg.time} ${checkmark}</div></div>`;
                 } else if (msg.type === 'image') {
-                    div.innerHTML = `${senderHTML}<div class="msg-bubble"><img src="${msg.text}"><div class="msg-time" style="background:rgba(0,0,0,0.4); border-radius:10px; padding:2px 6px; right:5px; bottom:5px;">${msg.time} ${checkmark}</div></div>`;
+                    div.innerHTML = `${senderHTML}${forwardHTML}<div class="msg-bubble"><img src="${msg.text}"><div class="msg-time" style="background:rgba(0,0,0,0.4); border-radius:10px; padding:2px 6px; right:5px; bottom:5px;">${msg.time} ${checkmark}</div></div>`;
                 } else {
-                    div.innerHTML = `${senderHTML}<div class="msg-bubble">${replyHTML}${msg.text}<span class="msg-time">${msg.time} ${checkmark}</span></div>`;
+                    div.innerHTML = `${senderHTML}${forwardHTML}<div class="msg-bubble">${replyHTML}${msg.text}<span class="msg-time">${msg.time} ${checkmark}</span></div>`;
                 }
 
                 let startX = 0;
@@ -1017,9 +1053,10 @@
             const menu = document.getElementById('ctxMenu');
             
             document.getElementById('ctxEditBtn').style.display = (msgData.sender === userID && msgData.type === 'text') ? 'block' : 'none';
+            document.getElementById('ctxPinBtn').style.display = (!groupsDB[currentChatID]) ? 'block' : 'none';
             
             menu.style.left = Math.min(x, window.innerWidth - 160) + 'px';
-            menu.style.top = Math.min(y, window.innerHeight - 200) + 'px';
+            menu.style.top = Math.min(y, window.innerHeight - 250) + 'px';
             menu.style.display = 'flex';
         }
         document.addEventListener('click', () => { document.getElementById('ctxMenu').style.display = 'none'; });
@@ -1052,11 +1089,60 @@
             closeModal('edit-message-modal');
         };
 
+        // ПЕРЕСЛАТЬ
+        window.ctxForward = function() {
+            forwardMsgData = ctxMsgData;
+            const container = document.getElementById('forwardList');
+            container.innerHTML = '';
+            
+            Object.keys(chatData).forEach(fid => {
+                if (fid === currentChatID) return;
+                let fname = fid === 'VOX-BOT' ? 'Vox Бот' : (groupsDB[fid]?.name || usersDB[fid]?.name || 'Чат');
+                const div = document.createElement('div');
+                div.style.padding = '15px';
+                div.style.borderBottom = '1px solid var(--border-color)';
+                div.style.cursor = 'pointer';
+                div.innerText = fname;
+                div.onclick = async () => {
+                    const chatID2 = [userID, fid].sort().join('_');
+                    await push(ref(db, 'messages/' + chatID2), {
+                        sender: userID,
+                        text: forwardMsgData.text,
+                        type: forwardMsgData.type,
+                        time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+                        timestamp: Date.now(),
+                        forwarded: true
+                    });
+                    closeModal('forward-modal');
+                    showNotification('Переслано', 'Сообщение отправлено!');
+                };
+                container.appendChild(div);
+            });
+            openModal('forward-modal');
+            document.getElementById('ctxMenu').style.display = 'none';
+        };
+
+        // ЗАКРЕПИТЬ
+        window.ctxPin = function() {
+            const chatID = [userID, currentChatID].sort().join('_');
+            set(ref(db, 'pinned/' + chatID), { text: ctxMsgData.text, sender: ctxMsgData.sender });
+            document.getElementById('pinnedMessageContent').innerText = (ctxMsgData.sender === userID ? 'Вы: ' : '') + ctxMsgData.text;
+            document.getElementById('pinnedMessage').classList.add('active');
+            document.getElementById('ctxMenu').style.display = 'none';
+        };
+
+        window.unpinMessage = function() {
+            const chatID = [userID, currentChatID].sort().join('_');
+            remove(ref(db, 'pinned/' + chatID));
+            document.getElementById('pinnedMessage').classList.remove('active');
+        };
+
+        // УДАЛЕНИЕ У ОБОИХ
         window.ctxDelete = function() {
             if (ctxMsgData.sender !== userID) return alert('Нельзя удалить чужое!');
-            if (confirm('Удалить сообщение?')) {
+            if (confirm('Удалить сообщение у всех?')) {
                 const chatID = [userID, currentChatID].sort().join('_');
-                remove(ref(db, `messages/${chatID}/${ctxMsgKey}`));
+                update(ref(db, `messages/${chatID}/${ctxMsgKey}`), { text: 'Сообщение удалено', type: 'text', deleted: true });
             }
             document.getElementById('ctxMenu').style.display = 'none';
         };
@@ -1121,7 +1207,6 @@
                 input.placeholder = "Сообщение...";
                 if (currentChatID !== 'VOX-BOT') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
                 
-                // ФИКС БАГА: Принудительная прокрутка вниз после отправки
                 const container = document.getElementById('messagesContainer');
                 setTimeout(() => {
                     container.scrollTop = container.scrollHeight;
