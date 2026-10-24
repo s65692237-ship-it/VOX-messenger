@@ -28,6 +28,7 @@
             --chat-wallpaper: none;
             --danger: #ef4444;
             --online: #10b981;
+            --offline: #64748b;
         }
 
         body.light-theme {
@@ -42,6 +43,7 @@
             --msg-in: #e2e8f0;
             --msg-out: #8b5cf6;
             --msg-out-text: #ffffff;
+            --offline: #cbd5e1;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent;}
@@ -53,7 +55,7 @@
             overflow: hidden; background-image: var(--bg-gradient); font-size: 14px;
         }
 
-        /* --- ЭКРАН АВТОРИЗАЦИИ --- */
+        /* --- АВТОРИЗАЦИЯ --- */
         #auth-screen {
             position: fixed; inset: 0; background: var(--bg-color); z-index: 1000; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;
@@ -134,11 +136,17 @@
         .chat-name { font-weight: 600; font-size: 16px; margin-bottom: 4px; color: var(--text-main); display:flex; align-items:center; gap:5px;}
         .chat-last-msg { font-size: 14px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+        /* Счётчик непрочитанных */
+        .unread-badge {
+            background: var(--online); color: white; font-size: 11px; font-weight: 600;
+            border-radius: 10px; padding: 2px 6px; display: none; margin-left: auto;
+        }
+
         .icon-group { font-size: 14px; color: var(--text-muted);}
 
         /* --- ЧАТ --- */
         .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--chat-bg); position: relative; background-image: var(--chat-wallpaper); background-size: cover; background-position: center;}
-        .chat-header { padding: 10px 20px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; background: var(--sidebar-bg); min-height: 70px;}
+        .chat-header { padding: 10px 20px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; background: var(--sidebar-bg); min-height: 70px; cursor: pointer;}
         .back-btn { display: none; background: none; border: none; color: var(--accent); font-size: 26px; cursor: pointer; margin-right: 10px; width: 40px; height: 40px; align-items: center; justify-content: center;}
         .chat-header-avatar { width: 45px; height: 45px; border-radius: 50%; margin-right: 12px; overflow: hidden; display: flex; justify-content: center; align-items: center; background: var(--accent); color: white; font-weight: bold; font-size: 18px;}
         .chat-header-avatar img { width: 100%; height: 100%; object-fit: cover; display: none;}
@@ -146,7 +154,7 @@
         .chat-header-status { font-size: 13px; color: var(--accent); }
         
         .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .message { max-width: 75%; display: flex; flex-direction: column; position: relative; animation: popIn 0.2s;}
+        .message { max-width: 75%; display: flex; flex-direction: column; position: relative; animation: popIn 0.2s; touch-action: pan-y;}
         @keyframes popIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .message.incoming { align-self: flex-start; }
         .message.outgoing { align-self: flex-end; align-items: flex-end; }
@@ -158,8 +166,9 @@
         .sender-name { font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 4px; display: block;}
         .message.outgoing .sender-name { display: none; }
 
-        .reply-quote { font-size: 12px; color: rgba(255,255,255,0.7); border-left: 2px solid rgba(255,255,255,0.5); padding-left: 8px; margin-bottom: 5px; font-style: italic; }
-        .message.incoming .reply-quote { color: var(--accent); border-left-color: var(--accent); }
+        /* Reply (внутри пузыря) */
+        .reply-quote { font-size: 12px; color: rgba(255,255,255,0.7); border-left: 2px solid rgba(255,255,255,0.5); padding-left: 8px; margin-bottom: 6px; font-style: italic; background: rgba(0,0,0,0.1); border-radius: 4px; padding: 4px 8px;}
+        .message.incoming .reply-quote { color: var(--accent); border-left-color: var(--accent); background: rgba(139, 92, 246, 0.1); }
         
         .reaction { position: absolute; bottom: -8px; background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 6px; font-size: 13px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);}
         .message.incoming .reaction { left: 10px; }
@@ -390,7 +399,7 @@
         </div>
 
         <div class="chat-area active" id="chatArea">
-            <div class="chat-header" onclick="openProfileModal()">
+            <div class="chat-header" onclick="openProfileModal()" oncontextmenu="event.preventDefault(); openClearChatModal();">
                 <button class="back-btn" onclick="event.stopPropagation(); closeChat()">←</button>
                 <div class="chat-header-avatar" id="headerAvatarContainer">
                     <img id="headerAvatarImg" src="" alt="Avatar">
@@ -471,6 +480,8 @@
         let chatData = {}; 
         let usersDB = {};
         let groupsDB = {}; 
+        let unreadCounts = {}; 
+        let onlineStatus = {}; // Кэш статусов для списка чатов
         let currentChatID = null;
         let currentChatStatus = 'offline';
         let typingTimeout = null;
@@ -582,6 +593,12 @@
                 renderChatList();
             });
 
+            // Слушаем статусы всех юзеров для точек в списке чатов
+            onValue(ref(db, 'status'), (snapshot) => {
+                onlineStatus = snapshot.val() || {};
+                renderChatList();
+            });
+
             const connectedRef = ref(db, '.info/connected');
             onValue(connectedRef, (snap) => {
                 if (snap.val() === true) {
@@ -649,6 +666,9 @@
                     }
                 }
                 
+                // Счётчик непрочитанных
+                const unread = unreadCounts[friendID] || 0;
+
                 const msgs = chatData[friendID] ? chatData[friendID].messages : null;
                 let lastMsg = 'Нет сообщений';
                 if (msgs) {
@@ -663,15 +683,19 @@
                 div.className = 'chat-item' + (friendID === currentChatID ? ' active' : '');
                 div.onclick = () => openChat(friendID, friendName, isGroup);
                 
+                // Онлайн-статус для точки
+                const isOnline = (friendID === 'VOX-BOT') || (onlineStatus[friendID] === 'online');
+
                 div.innerHTML = `
                     <div class="avatar">
                         ${avatarHtml}
-                        <div class="status-dot" style="display:${isGroup ? 'none' : 'block'}"></div>
+                        <div class="status-dot" style="background:${isOnline ? 'var(--online)' : 'var(--offline)'}; display:${isGroup ? 'none' : 'block'}"></div>
                     </div>
                     <div class="chat-info">
                         <div class="chat-name">${iconHtml} ${friendName}</div>
                         <div class="chat-last-msg">${lastMsg.length > 25 ? lastMsg.substring(0,25)+'...' : lastMsg}</div>
                     </div>
+                    <div class="unread-badge" style="display:${unread > 0 ? 'block' : 'none'}">${unread}</div>
                 `;
                 container.appendChild(div);
             });
@@ -740,6 +764,17 @@
             openModal('invite-modal');
         };
 
+        // ОЧИСТКА ЧАТА
+        window.openClearChatModal = function() {
+            if (!currentChatID) return;
+            if (confirm('Очистить историю чата? У собеседника она останется.')) {
+                const chatID = [userID, currentChatID].sort().join('_');
+                remove(ref(db, 'messages/' + chatID)).then(() => {
+                    showNotification('Чат', 'История очищена!');
+                });
+            }
+        };
+
         window.openChat = function(friendID, friendName, isGroup) {
             if (isRecording) stopVoiceRecord();
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -750,6 +785,10 @@
 
             currentChatID = friendID;
             
+            // Сбрасываем счётчик непрочитанных
+            unreadCounts[friendID] = 0;
+            renderChatList();
+
             document.getElementById('headerName').innerText = friendName;
             document.getElementById('inviteBtn').style.display = isGroup ? 'block' : 'none';
             
@@ -889,8 +928,35 @@
                 } else if (msg.type === 'image') {
                     div.innerHTML = `${senderHTML}<div class="msg-bubble"><img src="${msg.text}"><div class="msg-time" style="background:rgba(0,0,0,0.4); border-radius:10px; padding:2px 6px; right:5px; bottom:5px;">${msg.time} ${checkmark}</div></div>`;
                 } else {
-                    div.innerHTML = `${senderHTML}${replyHTML}<div class="msg-bubble">${msg.text}<span class="msg-time">${msg.time} ${checkmark}</span></div>`;
+                    div.innerHTML = `${senderHTML}<div class="msg-bubble">${replyHTML}${msg.text}<span class="msg-time">${msg.time} ${checkmark}</span></div>`;
                 }
+
+                // СВАЙП ДЛЯ ОТВЕТА
+                let startX = 0;
+                let currentX = 0;
+                div.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                    currentX = startX;
+                });
+                div.addEventListener('touchmove', (e) => {
+                    currentX = e.touches[0].clientX;
+                    const diff = currentX - startX;
+                    if (diff > 50 && diff < 100) {
+                        div.style.transform = `translateX(${diff}px)`;
+                        div.style.transition = 'none';
+                    }
+                });
+                div.addEventListener('touchend', (e) => {
+                    const diff = currentX - startX;
+                    div.style.transition = 'transform 0.2s';
+                    div.style.transform = 'translateX(0)';
+                    if (diff > 70) {
+                        // Это свайп-ответ
+                        replyTo = msg.text;
+                        document.getElementById('msgInput').placeholder = `Ответ: ${replyTo.substring(0, 15)}...`;
+                        document.getElementById('msgInput').focus();
+                    }
+                });
 
                 div.addEventListener('contextmenu', (e) => { e.preventDefault(); showCtxMenu(e.clientX, e.clientY, msg.key, msg); });
                 
@@ -1076,10 +1142,13 @@
                 setTimeout(async () => {
                     let reply = "";
                     const lower = text.toLowerCase();
-                    if (lower.includes('/help')) reply = "Команды бота: привет, как дела, кс";
+                    if (lower.includes('/help')) reply = "Команды бота: привет, как дела, кс, [цифры]";
                     else if (lower.includes('привет')) reply = "Привет, я Vox Бот! Чем могу помочь?";
                     else if (lower.includes('дела')) reply = "У меня всё отлично, работаю 24/7.";
                     else if (lower.includes('кс') || lower.includes('cs')) reply = "В CS2? Я бы сыграл, но у меня руки из кода.";
+                    else if (/^[\d\s+\-*\/]+$/.test(text)) {
+                        try { reply = "Результат: " + eval(text); } catch(e) { reply = "Не могу посчитать."; }
+                    }
                     else reply = "Я тебя понял. Но я всего лишь бот.";
                     
                     await push(ref(db, 'messages/' + [userID, 'VOX-BOT'].sort().join('_')), {
