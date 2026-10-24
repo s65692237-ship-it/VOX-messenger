@@ -9,7 +9,6 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
         
-        /* Переменные для тем */
         :root {
             --bg-color: #0f172a;
             --bg-gradient: radial-gradient(circle at top right, #1e1b4b, #0f172a 50%);
@@ -138,8 +137,10 @@
             border-radius: 50%; border: 2px solid var(--sidebar-bg); background: #10b981;
         }
 
-        .user-name { font-weight: 600; cursor: pointer; color: var(--text-main); }
-        .user-name:hover { text-decoration: underline; }
+        .user-info { display: flex; flex-direction: column; cursor: pointer; }
+        .user-name { font-weight: 600; color: var(--text-main); }
+        .user-id { font-size: 11px; color: var(--text-muted); }
+        
         .settings-btn { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; margin-left: auto; }
         .add-friend-btn { background: var(--accent); border: none; color: #fff; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 20px; display: flex; justify-content: center; align-items: center; margin-left: 10px;}
         
@@ -208,8 +209,8 @@
         .emoji-panel span { font-size: 20px; cursor: pointer; text-align: center; padding: 5px; }
 
         /* Модалки */
-        #user-profile-modal, #privacy-modal, #edit-profile-modal, #add-friend-modal, #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center; }
-        #user-profile-modal.active, #privacy-modal.active, #edit-profile-modal.active, #add-friend-modal.active, #settings-modal.active { display: flex; }
+        #user-profile-modal, #privacy-modal, #edit-profile-modal, #add-friend-modal, #settings-modal, #logout-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center; }
+        #user-profile-modal.active, #privacy-modal.active, #edit-profile-modal.active, #add-friend-modal.active, #settings-modal.active, #logout-modal.active { display: flex; }
         
         .modal-card { background: var(--sidebar-bg); padding: 30px; border-radius: 24px; text-align: center; width: 340px; border: 1px solid var(--border-color); backdrop-filter: var(--glass-effect);}
         .modal-card h2 { color: var(--text-main); margin-bottom: 20px; }
@@ -320,8 +321,20 @@
             </div>
 
             <button onclick="openPrivacy()" style="width:100%; margin-top:30px; padding:10px; background:var(--chat-bg); border:1px solid var(--border-color); border-radius:8px; color:var(--text-main); cursor:pointer;">Политика конфиденциальности</button>
-            <button onclick="logout()" style="width:100%; margin-top:10px; padding:10px; background:#ef4444; border:none; border-radius:8px; color:white; cursor:pointer;">Выйти</button>
+            <button onclick="openLogoutModal()" style="width:100%; margin-top:10px; padding:10px; background:#ef4444; border:none; border-radius:8px; color:white; cursor:pointer;">Выйти из аккаунта</button>
             <button onclick="closeSettings()" style="width:100%; margin-top:10px; padding:10px; background:var(--accent); border:none; border-radius:8px; color:white; cursor:pointer;">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ ВЫХОДА -->
+    <div id="logout-modal" onclick="closeLogoutModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <h2 style="color:#ef4444;">Выход</h2>
+            <p style="color:var(--text-main); margin-bottom:20px;">Вы уверены? <br><b>Ваш аккаунт и все данные будут полностью удалены с этого устройства.</b></p>
+            <div style="display:flex; gap:10px;">
+                <button onclick="closeLogoutModal()" style="flex:1; padding:10px; background:var(--chat-bg); border:none; border-radius:8px; color:var(--text-main); cursor:pointer;">Отмена</button>
+                <button onclick="confirmLogout()" style="flex:1; padding:10px; background:#ef4444; border:none; border-radius:8px; color:white; cursor:pointer;">Выйти</button>
+            </div>
         </div>
     </div>
 
@@ -349,7 +362,10 @@
                         <span id="myAvatarText">?</span>
                         <div class="status-dot"></div>
                     </div>
-                    <div class="user-name" id="myName" onclick="openEditProfile()">Гость</div>
+                    <div class="user-info" onclick="openEditProfile()">
+                        <div class="user-name" id="myName">Гость</div>
+                        <div class="user-id" id="myID">ID: Загрузка...</div>
+                    </div>
                     <button class="settings-btn" onclick="openSettings()">⚙️</button>
                     <button class="add-friend-btn" onclick="openAddFriend()" title="Добавить друга">+</button>
                 </div>
@@ -358,7 +374,6 @@
                 </div>
             </div>
             <div class="chat-list" id="chatList">
-                <!-- Пустой список при первом входе -->
                 <div style="text-align:center; color:var(--text-muted); padding:20px; font-size:14px;">У вас пока нет чатов. Нажмите "+" чтобы добавить друга.</div>
             </div>
         </div>
@@ -417,15 +432,21 @@
 
         // --- ДАННЫЕ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ ---
         let currentUser = localStorage.getItem('voxUser') || null;
+        let userID = localStorage.getItem('voxID') || null;
         let userAvatarBase64 = localStorage.getItem('voxAvatar') || null;
-        let chatData = JSON.parse(localStorage.getItem('voxChats')) || {}; // ПУСТОЙ СПИСОК ЧАТОВ!
-        let currentChat = null; // Никаких предустановленных чатов
+        let chatData = JSON.parse(localStorage.getItem('voxChats')) || {};
+        let currentChat = null;
         let tempAvatarBase64 = null;
         let replyTo = null;
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
         let isSending = false;
+
+        // --- ГЕНЕРАЦИЯ ID ---
+        function generateID() {
+            return 'VOX-' + Math.floor(1000 + Math.random() * 9000);
+        }
 
         // --- ОБРАБОТКА АВАТАРКИ ---
         function processAvatar(event, context) {
@@ -471,8 +492,14 @@
 
             currentUser = name;
             
+            // Генерация ID только при успешном входе, если его еще нет
+            if (!userID) {
+                userID = generateID();
+                localStorage.setItem('voxID', userID);
+            }
+            
             if (!usersDB[name]) {
-                usersDB[name] = { avatar: tempAvatarBase64 || null };
+                usersDB[name] = { avatar: tempAvatarBase64 || null, id: userID };
                 localStorage.setItem('voxUsersDB', JSON.stringify(usersDB));
             }
 
@@ -487,9 +514,14 @@
             showMainApp();
         }
 
-        function logout() {
+        function openLogoutModal() { document.getElementById('logout-modal').classList.add('active'); }
+        function closeLogoutModal() { document.getElementById('logout-modal').classList.remove('active'); }
+
+        function confirmLogout() {
             localStorage.removeItem('voxUser');
             localStorage.removeItem('voxAvatar');
+            localStorage.removeItem('voxID');
+            localStorage.removeItem('voxChats');
             location.reload();
         }
 
@@ -503,6 +535,7 @@
 
         function updateUserProfileUI() {
             document.getElementById('myName').innerText = currentUser;
+            document.getElementById('myID').innerText = 'ID: ' + userID;
             if (userAvatarBase64) {
                 document.getElementById('myAvatarImg').src = userAvatarBase64;
                 document.getElementById('myAvatarImg').style.display = 'block';
@@ -512,7 +545,7 @@
             }
         }
 
-        if (currentUser) showMainApp();
+        if (currentUser && userID) showMainApp();
 
         // --- РЕДАКТИРОВАНИЕ ПРОФИЛЯ ---
         function openEditProfile() {
@@ -545,7 +578,7 @@
                 if (isTaken) return alert('Этот никнейм уже занят!');
                 
                 delete usersDB[currentUser];
-                usersDB[newName] = { avatar: tempAvatarBase64 || userAvatarBase64 };
+                usersDB[newName] = { avatar: tempAvatarBase64 || userAvatarBase64, id: userID };
                 localStorage.setItem('voxUsersDB', JSON.stringify(usersDB));
                 
                 currentUser = newName;
@@ -621,7 +654,13 @@
                 const avatarLetter = name[0].toUpperCase();
                 
                 let friendAvatar = usersDB[name]?.avatar;
-                let avatarHTML = friendAvatar ? `<img src="${friendAvatar}" style="display:block">` : '';
+                let avatarHTML = '';
+                let letterHTML = avatarLetter;
+
+                if (friendAvatar) {
+                    avatarHTML = `<img src="${friendAvatar}" style="display:block">`;
+                    letterHTML = ''; // ИСПРАВЛЕНО: скрываем букву, если есть аватарка
+                }
 
                 const div = document.createElement('div');
                 div.className = 'chat-item' + (name === currentChat ? ' active' : '');
@@ -643,7 +682,7 @@
                 };
 
                 div.innerHTML = `
-                    <div class="avatar">${avatarHTML} ${friendAvatar ? '' : avatarLetter} <div class="status-dot"></div></div>
+                    <div class="avatar">${avatarHTML} ${letterHTML} <div class="status-dot"></div></div>
                     <div class="chat-info">
                         <div class="chat-name">${name}</div>
                         <div class="chat-last-msg">${shortLastMsg}</div>
@@ -654,12 +693,9 @@
         }
 
         // --- НАСТРОЙКИ ---
-        function openSettings() {
-            document.getElementById('settings-modal').classList.add('active');
-        }
-        function closeSettings() {
-            document.getElementById('settings-modal').classList.remove('active');
-        }
+        function openSettings() { document.getElementById('settings-modal').classList.add('active'); }
+        function closeSettings() { document.getElementById('settings-modal').classList.remove('active'); }
+        
         function changeTheme(theme) {
             document.body.className = '';
             if (theme === 'light') document.body.classList.add('light-theme');
@@ -844,6 +880,14 @@
             input.value += emoji;
             input.focus();
         }
+
+        // ИСПРАВЛЕНО: плавная прокрутка при фокусе на поле ввода (для мобилок)
+        document.getElementById('msgInput').addEventListener('focus', () => {
+            setTimeout(() => {
+                const messages = document.getElementById('messagesContainer');
+                messages.scrollTop = messages.scrollHeight;
+            }, 300);
+        });
 
         async function startVoiceRecord() {
             if (isRecording) { stopVoiceRecord(); return; }
