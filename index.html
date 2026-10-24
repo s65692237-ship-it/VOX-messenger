@@ -105,7 +105,7 @@
             display: flex; overflow: hidden; position: relative; display: none;
         }
 
-        /* --- САЙДБАР (СПИСОК ЧАТОВ) --- */
+        /* --- САЙДБАР --- */
         .sidebar { width: 360px; border-right: 1px solid var(--border-color); background: var(--sidebar-bg); display: flex; flex-direction: column; flex-shrink: 0; transition: transform 0.3s;}
         .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border-color); }
         .user-profile { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
@@ -156,6 +156,10 @@
         
         .message.image .msg-bubble { background: transparent; padding: 0; }
         .message.image img { max-width: 250px; border-radius: 12px; }
+
+        /* Стили для голосовых */
+        .message.voice .msg-bubble { background: transparent; padding: 0; }
+        audio { max-width: 220px; outline: none; border-radius: 20px; }
         
         .msg-time { font-size: 11px; color: var(--text-muted); margin-top: 3px; padding: 0 5px; }
         .checkmark { color: #60a5fa; font-size: 12px; margin-left: 3px;}
@@ -372,6 +376,8 @@
             
             <div class="input-area">
                 <button class="icon-btn" onclick="openImagePicker()" title="Фото">📷</button>
+                <!-- Кнопка микрофона ВОЗВРАЩЕНА -->
+                <button class="icon-btn" onclick="startVoiceRecord()" id="voiceBtn" title="Голосовое">🎙️</button>
                 <input type="text" id="msgInput" placeholder="Сообщение..." onkeypress="handleKeyPress(event)" oninput="saveDraft()">
                 <button class="send-btn" id="sendBtn" onclick="sendMessage()"><svg viewBox="0 0 24 24"><path fill="white" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
             </div>
@@ -413,6 +419,12 @@
         let unsubscribeMessages = null;
         let ctxMsgKey = null;
         let ctxMsgData = null;
+        
+        // Переменные для голосовых
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let currentStream = null;
 
         // --- ГЕНЕРАЦИЯ УНИКАЛЬНОГО ID ---
         async function generateUniqueID() {
@@ -479,7 +491,7 @@
             }
             localStorage.setItem('voxUser', name);
             
-            // Добавляем Vox Бота при первом входе (для теста и модерации)
+            // Добавляем Vox Бота при первом входе
             await set(ref(db, `user_chats/${userID}/VOX-BOT`), true);
             
             await initApp();
@@ -570,6 +582,9 @@
 
         // --- ОТКРЫТИЕ ЧАТА ---
         window.openChat = function(friendID, friendName) {
+            // Останавливаем запись при смене чата
+            if (isRecording) stopVoiceRecord();
+
             currentChatID = friendID;
             currentChatName = friendName;
             
@@ -605,6 +620,7 @@
         };
 
         window.closeChat = function() {
+            if (isRecording) stopVoiceRecord();
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('chatArea').classList.remove('active');
             currentChatID = null;
@@ -626,8 +642,10 @@
                 let replyHTML = msg.reply ? `<div class="reply-quote">${msg.reply}</div>` : '';
                 let checkmark = isMine ? '<span class="checkmark">✓✓</span>' : '';
                 
-                if (msg.type === 'image') {
-                    div.innerHTML = `<div class="msg-bubble"><img src="${msg.text}" style="max-width:200px; border-radius:12px;"></div><div class="msg-time">${msg.time}</div>`;
+                if (msg.type === 'voice') {
+                    div.innerHTML = `<div class="msg-bubble"><audio controls src="${msg.text}"></audio></div><div class="msg-time">${msg.time} ${checkmark}</div>`;
+                } else if (msg.type === 'image') {
+                    div.innerHTML = `<div class="msg-bubble"><img src="${msg.text}" style="max-width:200px; border-radius:12px;"></div><div class="msg-time">${msg.time} ${checkmark}</div>`;
                 } else {
                     div.innerHTML = `${replyHTML}<div class="msg-bubble">${msg.text}</div><div class="msg-time">${msg.time} ${checkmark}</div>`;
                 }
@@ -661,7 +679,6 @@
             ctxMsgData = msgData;
             const menu = document.getElementById('ctxMenu');
             
-            // Редактировать можно только свои
             document.getElementById('ctxEditBtn').style.display = (msgData.sender === userID) ? 'block' : 'none';
             
             menu.style.left = Math.min(x, window.innerWidth - 160) + 'px';
@@ -687,7 +704,7 @@
             if (ctxMsgData.sender !== userID) return alert('Нельзя редактировать чужое!');
             document.getElementById('editMsgInput').value = ctxMsgData.text;
             openModal('edit-message-modal');
-            document.getElementById('ctxMenu').style.display = 'none';
+            document.getElementById('ctxMenu').style.display = 'none'; // Закрываем меню при редактировании
         };
 
         window.saveEditedMessage = function() {
@@ -707,7 +724,7 @@
             document.getElementById('ctxMenu').style.display = 'none';
         };
 
-        // --- ОТПРАВКА СООБЩЕНИЙ ---
+        // --- ОТПРАВКА ТЕКСТА ---
         window.sendMessage = async function() {
             if (!currentChatID || isSending) return;
             const input = document.getElementById('msgInput');
@@ -805,6 +822,58 @@
             reader.readAsDataURL(file);
             event.target.value = '';
         };
+
+        // --- ГОЛОСОВЫЕ ---
+        window.startVoiceRecord = async function() {
+            if (isRecording) { stopVoiceRecord(); return; }
+            if (!currentChatID) return alert('Сначала выберите чат!');
+            
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(currentStream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        const chatID = [userID, currentChatID].sort().join('_');
+                        await push(ref(db, 'messages/' + chatID), {
+                            sender: userID,
+                            text: reader.result,
+                            type: 'voice',
+                            time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+                            timestamp: Date.now()
+                        });
+                    };
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById('voiceBtn').style.color = 'var(--danger)';
+                document.getElementById('voiceBtn').innerText = '⏹️';
+                
+                setTimeout(() => { if (isRecording) stopVoiceRecord(); }, 10000);
+
+            } catch (err) {
+                alert("Ошибка доступа к микрофону.");
+            }
+        };
+
+        function stopVoiceRecord() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                    currentStream = null;
+                }
+                isRecording = false;
+                document.getElementById('voiceBtn').style.color = 'var(--text-muted)';
+                document.getElementById('voiceBtn').innerText = '🎙️';
+            }
+        }
 
         // --- НАСТРОЙКИ ---
         window.openModal = function(id) { document.getElementById(id).classList.add('active'); };
