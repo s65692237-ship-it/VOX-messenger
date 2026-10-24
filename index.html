@@ -595,7 +595,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getDatabase, ref, push, onValue, set, get, child, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+        import { getDatabase, ref, push, onValue, set, get, child, update, remove, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
         const firebaseConfig = {
@@ -1066,7 +1066,8 @@
             const container = document.getElementById('messagesContainer');
             container.innerHTML = '';
             
-            const msgs = Object.keys(msgsObj).map(key => ({ key, ...msgsObj[key] })).sort((a, b) => a.timestamp - b.timestamp);
+            // Серверный timestamp для сортировки
+            const msgs = Object.keys(msgsObj).map(key => ({ key, ...msgsObj[key] })).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             let lastDate = '';
 
             msgs.forEach(msg => {
@@ -1275,7 +1276,7 @@
                         text: forwardMsgData.text,
                         type: forwardMsgData.type,
                         time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-                        timestamp: Date.now(),
+                        timestamp: serverTimestamp(),
                         forwarded: true
                     });
                     closeModal('forward-modal');
@@ -1331,7 +1332,7 @@
                 text: src,
                 type: 'image',
                 time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-                timestamp: Date.now()
+                timestamp: serverTimestamp()
             });
             document.getElementById('stickerPanel').classList.remove('active');
         };
@@ -1358,7 +1359,7 @@
                 sender: userID,
                 text: text,
                 time: time,
-                timestamp: Date.now(),
+                timestamp: serverTimestamp(),
                 type: 'text'
             };
             if (replyTo) msgData.reply = replyTo;
@@ -1401,7 +1402,7 @@
                         sender: 'VOX-BOT',
                         text: reply,
                         time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-                        timestamp: Date.now(),
+                        timestamp: serverTimestamp(),
                         type: 'text'
                     });
                 }, 1500);
@@ -1438,7 +1439,10 @@
         };
 
         window.addFriendToChat = async function(friendID) {
+            // ФИКС: Добавляем чат обоим пользователям
             await set(ref(db, `user_chats/${userID}/${friendID}`), true);
+            await set(ref(db, `user_chats/${friendID}/${userID}`), true);
+            
             closeModal('add-friend-modal');
             const friendName = friendID === 'VOX-BOT' ? 'Vox Бот' : (usersDB[friendID]?.name || 'Друг');
             openChat(friendID, friendName, false);
@@ -1458,7 +1462,7 @@
                     text: e.target.result,
                     type: 'image',
                     time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-                    timestamp: Date.now()
+                    timestamp: serverTimestamp()
                 });
             };
             reader.readAsDataURL(file);
@@ -1487,7 +1491,7 @@
                             text: reader.result,
                             type: 'voice',
                             time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-                            timestamp: Date.now()
+                            timestamp: serverTimestamp()
                         });
                     };
                 };
