@@ -266,6 +266,7 @@
             </div>
             <input type="file" id="editAvatarInput" accept="image/*" style="display: none;" onchange="processAvatar(event, 'edit')">
             <input type="text" id="editNameInput" placeholder="Новый никнейм" maxlength="15">
+            <input type="text" id="editStatusInput" placeholder="Статус (о себе)" maxlength="30">
             <div style="display:flex; gap:10px;">
                 <button onclick="closeModal('edit-profile-modal')" style="flex:1; padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; font-weight:600;">Отмена</button>
                 <button onclick="saveProfile()" style="flex:1; padding:12px; background:var(--accent); border:none; border-radius:10px; color:white; cursor:pointer; font-weight:600;">Сохранить</button>
@@ -495,7 +496,8 @@
                     await set(ref(db, 'users/' + newUid), {
                         name: email.split('@')[0],
                         voxId: voxId,
-                        avatar: tempAvatarBase64 || null
+                        avatar: tempAvatarBase64 || null,
+                        status: 'В сети Vox'
                     });
                     showNotification('Успех', 'Аккаунт создан!');
                 } else {
@@ -875,7 +877,7 @@
 
         window.saveEditedMessage = function() {
             const newText = document.getElementById('editMsgInput').value.trim();
-            if (!newText) return;
+            if (!newText) return alert('Сообщение не может быть пустым!');
             const chatID = [userID, currentChatID].sort().join('_');
             update(ref(db, `messages/${chatID}/${ctxMsgKey}`), { text: newText, edited: true });
             closeModal('edit-message-modal');
@@ -934,20 +936,27 @@
             const chatID = [userID, currentChatID].sort().join('_');
             const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-            await push(ref(db, 'messages/' + chatID), {
+            // Собираем объект сообщения, не добавляя пустые поля
+            const msgData = {
                 sender: userID,
                 text: text,
                 time: time,
                 timestamp: Date.now(),
-                reply: replyTo,
                 type: 'text'
-            });
+            };
+            if (replyTo) msgData.reply = replyTo;
 
-            input.value = '';
-            replyTo = null;
-            input.placeholder = "Сообщение...";
-            isSending = false;
-            sendBtn.style.opacity = '1';
+            try {
+                await push(ref(db, 'messages/' + chatID), msgData);
+                input.value = '';
+                replyTo = null;
+                input.placeholder = "Сообщение...";
+            } catch (e) {
+                alert('Ошибка отправки: ' + e.message);
+            } finally {
+                isSending = false;
+                sendBtn.style.opacity = '1';
+            }
 
             if (currentChatID === 'VOX-BOT') {
                 setTimeout(async () => {
@@ -1125,15 +1134,19 @@
 
         window.openEditProfile = function() {
             document.getElementById('editNameInput').value = currentUser;
+            const myData = usersDB[userID] || {};
+            document.getElementById('editStatusInput').value = myData.status || '';
             document.getElementById('edit-profile-modal').classList.add('active');
         };
 
         window.saveProfile = async function() {
             const newName = document.getElementById('editNameInput').value.trim();
+            const newStatus = document.getElementById('editStatusInput').value.trim();
             if (newName.length < 2) return alert('Слишком коротко!');
             
             await update(ref(db, 'users/' + userID), {
                 name: newName,
+                status: newStatus,
                 avatar: tempAvatarBase64 || (usersDB[userID] || {}).avatar
             });
             
