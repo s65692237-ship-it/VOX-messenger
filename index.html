@@ -46,6 +46,40 @@
             --offline: #cbd5e1;
         }
 
+        /* КИБЕРПАНК ТЕМА */
+        body.cyberpunk-theme {
+            --bg-color: #050505;
+            --bg-gradient: linear-gradient(45deg, #0d0221, #1a0033);
+            --sidebar-bg: rgba(13, 2, 33, 0.9);
+            --chat-bg: rgba(0, 0, 0, 0.6);
+            --border-color: #ff00ff;
+            --text-main: #00ffff;
+            --text-muted: #ff00ff;
+            --accent: #00ffff;
+            --accent-hover: #00cccc;
+            --msg-in: #1a0033;
+            --msg-out: #330066;
+            --msg-out-text: #00ffff;
+            --offline: #440044;
+        }
+
+        /* РОЗОВАЯ ТЕМА */
+        body.pink-theme {
+            --bg-color: #fdf2f8;
+            --bg-gradient: linear-gradient(135deg, #fce7f3, #fbcfe8);
+            --sidebar-bg: rgba(255, 255, 255, 0.85);
+            --chat-bg: #fce7f3;
+            --border-color: #f9a8d4;
+            --text-main: #831843;
+            --text-muted: #db2777;
+            --accent: #ec4899;
+            --accent-hover: #db2777;
+            --msg-in: #ffffff;
+            --msg-out: #f472b6;
+            --msg-out-text: #ffffff;
+            --offline: #fbcfe8;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent;}
         
         body {
@@ -126,7 +160,7 @@
         .search-bar input { width: 100%; padding: 12px 15px; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 10px; color: var(--text-main); font-size: 14px; outline: none; }
         
         .chat-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .chat-item { display: flex; align-items: center; padding: 15px; border-radius: 16px; cursor: pointer; margin-bottom: 5px; position: relative; transition: 0.2s;}
+        .chat-item { display: flex; align-items: center; padding: 15px; border-radius: 16px; cursor: pointer; margin-bottom: 5px; position: relative; transition: 0.2s; touch-action: pan-y;}
         .chat-item:hover { background: rgba(255, 255, 255, 0.05); }
         body.light-theme .chat-item:hover { background: rgba(0, 0, 0, 0.05); }
         .chat-item.active { background: rgba(139, 92, 246, 0.15); border-left: 3px solid var(--accent); }
@@ -240,6 +274,14 @@
         .wallpaper-item { aspect-ratio: 1; border-radius: 8px; cursor: pointer; border: 2px solid transparent; background-size: cover; background-position: center; transition: 0.2s;}
         .wallpaper-item.selected { border-color: var(--accent); }
         .wallpaper-item.none { background: var(--chat-bg); display: flex; justify-content: center; align-items: center; font-size: 11px; color: var(--text-muted); }
+
+        /* Переключатель (Toggle Switch) */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-color); transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(20px); }
 
         @media (max-width: 768px) {
             .vox-container { border-radius: 0; border: none; max-height: 100%; }
@@ -367,13 +409,35 @@
                 <p style="color:var(--text-muted); font-size: 13px; margin-bottom:5px;">Ваш ID:</p>
                 <div id="myIdDisplay" onclick="copyMyId()" style="font-size: 18px; font-weight: 700; color: var(--accent); cursor: pointer; letter-spacing:1px;">VOX-0000</div>
             </div>
+            
             <div class="settings-row">
                 <span>Тема:</span>
                 <div class="settings-btn-group" id="themeGroup">
                     <button class="settings-opt" onclick="changeTheme('default')">Тёмная</button>
                     <button class="settings-opt" onclick="changeTheme('light')">Светлая</button>
+                    <button class="settings-opt" onclick="changeTheme('cyberpunk')">Кибер</button>
+                    <button class="settings-opt" onclick="changeTheme('pink')">Розовая</button>
                 </div>
             </div>
+            
+            <div class="settings-row" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <span>Приватность:</span>
+            </div>
+            <div class="settings-row">
+                <span style="font-size:13px;">Скрыть статус "В сети"</span>
+                <label class="switch">
+                    <input type="checkbox" id="privacyOnline" onchange="togglePrivacy('online', this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-row">
+                <span style="font-size:13px;">Скрыть "Печатает..."</span>
+                <label class="switch">
+                    <input type="checkbox" id="privacyTyping" onchange="togglePrivacy('typing', this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
             <div style="text-align:left; margin-top:20px; font-weight:600; font-size:14px;">Обои чата:</div>
             <div class="wallpaper-grid" id="wallpaperGrid">
                 <div class="wallpaper-item none" onclick="changeWallpaper('none', this)">Нет</div>
@@ -437,7 +501,6 @@
                 <button id="inviteBtn" onclick="event.stopPropagation(); openInviteModal()" style="display:none; background:none; border:none; color:var(--accent); font-size:20px; cursor:pointer;">➕</button>
             </div>
 
-            <!-- Закрепленное сообщение -->
             <div class="pinned-message" id="pinnedMessage">
                 <div class="pinned-message-content" id="pinnedMessageContent"></div>
                 <button class="pinned-message-close" onclick="unpinMessage()">✕</button>
@@ -635,7 +698,9 @@
                 if (snap.val() === true) {
                     const myStatusRef = ref(db, 'status/' + userID);
                     onDisconnect(myStatusRef).set('offline');
-                    set(myStatusRef, 'online');
+                    if (localStorage.getItem('voxPrivacyOnline') !== 'true') {
+                        set(myStatusRef, 'online');
+                    }
                 }
             });
 
@@ -714,6 +779,35 @@
                 div.onclick = () => openChat(friendID, friendName, isGroup);
                 
                 const isOnline = (friendID === 'VOX-BOT') || (onlineStatus[friendID] === 'online');
+
+                // СВАЙП ДЛЯ УДАЛЕНИЯ
+                let startX = 0;
+                let currentX = 0;
+                div.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                    currentX = startX;
+                });
+                div.addEventListener('touchmove', (e) => {
+                    currentX = e.touches[0].clientX;
+                    const diff = currentX - startX;
+                    if (diff < -50 && diff > -100) {
+                        div.style.transform = `translateX(${diff}px)`;
+                        div.style.transition = 'none';
+                        div.style.background = 'rgba(239, 68, 68, 0.2)';
+                    }
+                });
+                div.addEventListener('touchend', (e) => {
+                    const diff = currentX - startX;
+                    div.style.transition = 'transform 0.3s, background 0.3s';
+                    div.style.transform = 'translateX(0)';
+                    div.style.background = '';
+                    if (diff < -70) {
+                        if (confirm(`Удалить чат с ${friendName}?`)) {
+                            const chatRef = ref(db, `user_chats/${userID}/${friendID}`);
+                            remove(chatRef);
+                        }
+                    }
+                });
 
                 div.innerHTML = `
                     <div class="avatar">
@@ -839,6 +933,7 @@
             if (window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.add('hidden');
                 document.getElementById('chatArea').classList.add('active');
+                history.replaceState({chat: friendID}, '', '#chat');
             }
             
             renderChatList();
@@ -846,6 +941,18 @@
             if (unsubscribeMessages) unsubscribeMessages();
             if (unsubscribeStatus) unsubscribeStatus();
             if (unsubscribeTyping) unsubscribeTyping();
+
+            const chatID = [userID, friendID].sort().join('_');
+
+            onValue(ref(db, 'pinned/' + chatID), (snap) => {
+                const pinned = snap.val();
+                if (pinned) {
+                    document.getElementById('pinnedMessageContent').innerText = (pinned.sender === userID ? 'Вы: ' : '') + pinned.text;
+                    document.getElementById('pinnedMessage').classList.add('active');
+                } else {
+                    document.getElementById('pinnedMessage').classList.remove('active');
+                }
+            });
 
             if (!isGroup && friendID !== 'VOX-BOT') {
                 const statusRef = ref(db, 'status/' + friendID);
@@ -858,7 +965,7 @@
                 });
                 
                 unsubscribeTyping = onValue(typingRef, (snapshot) => {
-                    if (snapshot.val() === 'typing') {
+                    if (snapshot.val() === 'typing' && localStorage.getItem('voxPrivacyTyping') !== 'true') {
                         document.getElementById('typingStatus').innerText = 'печатает...';
                         document.getElementById('typingStatus').style.color = 'var(--accent)';
                     } else {
@@ -870,7 +977,6 @@
                 updateChatHeaderStatus(isGroup, friendID);
             }
 
-            const chatID = [userID, friendID].sort().join('_');
             const messagesRef = ref(db, 'messages/' + chatID);
             
             unsubscribeMessages = onValue(messagesRef, (snapshot) => {
@@ -930,7 +1036,6 @@
                 const isMine = msg.sender === userID;
                 div.className = `message ${isMine ? 'outgoing' : 'incoming'}`;
                 
-                // Пересланное
                 let forwardHTML = msg.forwarded ? `<div class="forwarded-label">➡️ Переслано</div>` : '';
 
                 let senderHTML = '';
@@ -1004,7 +1109,6 @@
                 container.appendChild(div);
             });
             
-            // ФИКС БАГА: Прокрутка вниз
             setTimeout(() => {
                 container.scrollTop = container.scrollHeight;
             }, 10);
@@ -1089,7 +1193,6 @@
             closeModal('edit-message-modal');
         };
 
-        // ПЕРЕСЛАТЬ
         window.ctxForward = function() {
             forwardMsgData = ctxMsgData;
             const container = document.getElementById('forwardList');
@@ -1122,7 +1225,6 @@
             document.getElementById('ctxMenu').style.display = 'none';
         };
 
-        // ЗАКРЕПИТЬ
         window.ctxPin = function() {
             const chatID = [userID, currentChatID].sort().join('_');
             set(ref(db, 'pinned/' + chatID), { text: ctxMsgData.text, sender: ctxMsgData.sender });
@@ -1137,7 +1239,6 @@
             document.getElementById('pinnedMessage').classList.remove('active');
         };
 
-        // УДАЛЕНИЕ У ОБОИХ
         window.ctxDelete = function() {
             if (ctxMsgData.sender !== userID) return alert('Нельзя удалить чужое!');
             if (confirm('Удалить сообщение у всех?')) {
@@ -1223,11 +1324,12 @@
                 setTimeout(async () => {
                     let reply = "";
                     const lower = text.toLowerCase();
-                    if (lower.includes('/help')) reply = "Команды бота: привет, как дела, кс, [цифры], /погода";
+                    if (lower.includes('/help')) reply = "Команды бота: привет, как дела, кс, [цифры], /погода, /курс";
                     else if (lower.includes('привет')) reply = "Привет, я Vox Бот! Чем могу помочь?";
                     else if (lower.includes('дела')) reply = "У меня всё отлично, работаю 24/7.";
                     else if (lower.includes('кс') || lower.includes('cs')) reply = "В CS2? Я бы сыграл, но у меня руки из кода.";
-                    else if (lower.includes('погода')) reply = "В Томске сегодня отличная погода для кодинга! ☀️";
+                    else if (lower.includes('/погода')) reply = "В Томске сегодня отличная погода для кодинга! ☀️";
+                    else if (lower.includes('/курс')) reply = "Курс доллара: 92 руб. (примерно).";
                     else if (/^[\d\s+\-*\/]+$/.test(text)) {
                         try { reply = "Результат: " + eval(text); } catch(e) { reply = "Не могу посчитать."; }
                     }
@@ -1358,7 +1460,7 @@
         
         window.changeTheme = function(theme) {
             document.body.className = '';
-            if (theme === 'light') document.body.classList.add('light-theme');
+            if (theme !== 'default') document.body.classList.add(theme + '-theme');
             localStorage.setItem('voxTheme', theme);
         };
         window.changeFontSize = function(size) {
@@ -1426,6 +1528,18 @@
             location.reload();
         };
 
+        window.togglePrivacy = function(type, isEnabled) {
+            localStorage.setItem('voxPrivacy' + type.charAt(0).toUpperCase() + type.slice(1), isEnabled);
+            if (type === 'online') {
+                const myStatusRef = ref(db, 'status/' + userID);
+                if (isEnabled) {
+                    set(myStatusRef, 'offline');
+                } else {
+                    set(myStatusRef, 'online');
+                }
+            }
+        };
+
         window.openProfileModal = function() {};
         window.filterChats = function() {
             const query = document.getElementById('searchInput').value.toLowerCase();
@@ -1435,10 +1549,20 @@
             });
         };
 
+        // ИСПРАВЛЕНИЕ БАГА: Обработка кнопки "Назад" на телефоне
+        window.addEventListener('popstate', () => {
+            if (window.innerWidth <= 768) closeChat();
+        });
+
         window.addEventListener('load', () => {
-            if (localStorage.getItem('voxTheme')) changeTheme(localStorage.getItem('voxTheme'));
+            const savedTheme = localStorage.getItem('voxTheme') || 'default';
+            changeTheme(savedTheme);
+            
             if (localStorage.getItem('voxFontSize')) changeFontSize(localStorage.getItem('voxFontSize'));
             if (localStorage.getItem('voxWallpaper')) document.documentElement.style.setProperty('--chat-wallpaper', localStorage.getItem('voxWallpaper'));
+
+            if (localStorage.getItem('voxPrivacyOnline') === 'true') document.getElementById('privacyOnline').checked = true;
+            if (localStorage.getItem('voxPrivacyTyping') === 'true') document.getElementById('privacyTyping').checked = true;
         });
     </script>
 </body>
