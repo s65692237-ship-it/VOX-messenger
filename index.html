@@ -320,10 +320,27 @@
         input:checked + .slider:before { transform: translateX(20px); }
 
         /* Кнопки действий в модалках */
-        .action-btn { padding: 14px 20px; border-radius: 12px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; min-height: 48px; display: flex; align-items: center; justify-content: center; }
+        .action-btn { padding: 14px 20px; border-radius: 12px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; min-height: 48px; display: flex; align-items: center; justify-content: center; width: 100%; }
         .btn-primary { background: var(--accent); color: white; }
         .btn-primary:hover { background: var(--accent-hover); }
         .btn-secondary { background: var(--chat-bg); color: var(--text-main); border: 1px solid var(--border-color); }
+
+        /* Профиль как в Telegram */
+        .profile-screen { text-align: center; }
+        .profile-avatar-big {
+            width: 120px; height: 120px; border-radius: 50%; margin: 20px auto;
+            background: var(--accent); display: flex; justify-content: center; align-items: center;
+            font-size: 48px; color: white; font-weight: 600; position: relative;
+            overflow: hidden; border: 3px solid var(--accent);
+        }
+        .profile-avatar-big img { width: 100%; height: 100%; object-fit: cover; display: none;}
+        .profile-name-big { font-size: 22px; font-weight: 600; margin-bottom: 5px; color: var(--text-main);}
+        .profile-status-big { font-size: 14px; color: var(--text-muted); margin-bottom: 20px;}
+        .profile-info-row {
+            display: flex; justify-content: space-between; padding: 12px 0;
+            border-bottom: 1px solid var(--border-color); color: var(--text-main); font-size: 15px;
+        }
+        .profile-info-row span:last-child { color: var(--text-muted); }
 
         @media (max-width: 768px) {
             .vox-container { border-radius: 0; border: none; max-height: 100%; }
@@ -334,9 +351,7 @@
             .back-btn { display: flex; }
             .message { max-width: 85%; }
             .chat-header { padding-top: max(10px, env(safe-area-inset-top)); }
-            /* Адаптив для мобилки: модалки и кнопки */
             .modal-card { max-width: 100%; padding: 20px; }
-            .action-btn { width: 100%; font-size: 16px; padding: 14px; }
             .settings-opt { flex: 1; text-align: center; }
         }
     </style>
@@ -371,23 +386,50 @@
 
     <div class="ctx-menu" id="ctxMenu">
         <button onclick="ctxReply()">↩️ Ответить</button>
-        <button onclick="openReactionMenu(event.clientX, event.clientY)">😀 Реакция</button>
+        <button onclick="openReactionMenuFromCtx(event)">😀 Реакция</button>
         <button onclick="ctxEdit()" id="ctxEditBtn">✏️ Редактировать</button>
         <button onclick="ctxForward()">➡️ Переслать</button>
         <button onclick="ctxPin()" id="ctxPinBtn">📌 Закрепить</button>
         <button onclick="ctxDelete()" style="color:var(--danger);">🗑️ Удалить</button>
     </div>
 
-    <!-- Модалка пересылки -->
-    <div class="modal-overlay" id="forward-modal" onclick="closeModal('forward-modal')">
+    <!-- Модалка просмотра чужого профиля -->
+    <div class="modal-overlay" id="view-profile-modal" onclick="overlayClick(event, 'view-profile-modal')">
         <div class="modal-card" onclick="event.stopPropagation()">
-            <h2>Переслать в...</h2>
-            <div id="forwardList" style="text-align:left; max-height:300px; overflow-y:auto; margin-bottom:20px;"></div>
-            <button class="action-btn btn-secondary" onclick="closeModal('forward-modal')" style="width:100%;">Отмена</button>
+            <div class="profile-screen">
+                <div class="profile-avatar-big" id="viewProfileAvatar">
+                    <img id="viewProfileAvatarImg" src="" alt="Avatar">
+                    <span id="viewProfileAvatarText">?</span>
+                </div>
+                <div class="profile-name-big" id="viewProfileName">Собеседник</div>
+                <div class="profile-status-big" id="viewProfileStatus">был(а) недавно</div>
+                
+                <div style="text-align:left; margin-top:20px;">
+                    <div class="profile-info-row">
+                        <span>ID</span>
+                        <span id="viewProfileId">VOX-0000</span>
+                    </div>
+                    <div class="profile-info-row" id="viewProfileBioRow" style="display:none;">
+                        <span>О себе</span>
+                        <span id="viewProfileBio"></span>
+                    </div>
+                </div>
+            </div>
+            <button class="action-btn btn-secondary" onclick="closeModal('view-profile-modal')" style="margin-top:20px;">Закрыть</button>
         </div>
     </div>
 
-    <div class="modal-overlay" id="edit-profile-modal" onclick="closeModal('edit-profile-modal')">
+    <!-- Модалка пересылки -->
+    <div class="modal-overlay" id="forward-modal" onclick="overlayClick(event, 'forward-modal')">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <h2>Переслать в...</h2>
+            <div id="forwardList" style="text-align:left; max-height:300px; overflow-y:auto; margin-bottom:20px;"></div>
+            <button class="action-btn btn-secondary" onclick="closeModal('forward-modal')">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Модалка своего профиля -->
+    <div class="modal-overlay" id="edit-profile-modal" onclick="overlayClick(event, 'edit-profile-modal')">
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2>Мой профиль</h2>
             <div class="edit-avatar-container" onclick="document.getElementById('editAvatarInput').click()">
@@ -404,7 +446,7 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="add-friend-modal" onclick="closeModal('add-friend-modal')">
+    <div class="modal-overlay" id="add-friend-modal" onclick="overlayClick(event, 'add-friend-modal')">
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2>Добавить</h2>
             <div style="display:flex; gap:10px; margin-bottom:20px;">
@@ -414,7 +456,7 @@
             <div id="add-friend-pane">
                 <input type="text" id="friendSearchInput" placeholder="Введите VOX ID друга">
                 <div id="searchResult" style="margin-bottom:20px; color: var(--accent); font-size:14px; min-height:20px;"></div>
-                <button class="action-btn btn-primary" onclick="searchFriend()" style="width:100%; margin-bottom:10px;">Найти по ID</button>
+                <button class="action-btn btn-primary" onclick="searchFriend()" style="margin-bottom:10px;">Найти по ID</button>
             </div>
             <div id="add-group-pane" style="display:none;">
                 <input type="text" id="groupNameInput" placeholder="Название">
@@ -422,21 +464,21 @@
                     <option value="group">👥 Группа</option>
                     <option value="channel">📢 Канал</option>
                 </select>
-                <button class="action-btn btn-primary" onclick="createGroup()" style="width:100%; margin-bottom:10px;">Создать</button>
+                <button class="action-btn btn-primary" onclick="createGroup()" style="margin-bottom:10px;">Создать</button>
             </div>
-            <button class="action-btn btn-secondary" onclick="closeModal('add-friend-modal')" style="width:100%;">Закрыть</button>
+            <button class="action-btn btn-secondary" onclick="closeModal('add-friend-modal')">Закрыть</button>
         </div>
     </div>
 
-    <div class="modal-overlay" id="invite-modal" onclick="closeModal('invite-modal')">
+    <div class="modal-overlay" id="invite-modal" onclick="overlayClick(event, 'invite-modal')">
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2>Добавить участника</h2>
             <div id="inviteList" style="text-align:left; max-height:200px; overflow-y:auto; margin-bottom:20px;"></div>
-            <button class="action-btn btn-secondary" onclick="closeModal('invite-modal')" style="width:100%;">Закрыть</button>
+            <button class="action-btn btn-secondary" onclick="closeModal('invite-modal')">Закрыть</button>
         </div>
     </div>
 
-    <div class="modal-overlay" id="edit-message-modal" onclick="closeModal('edit-message-modal')">
+    <div class="modal-overlay" id="edit-message-modal" onclick="overlayClick(event, 'edit-message-modal')">
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2>Редактировать</h2>
             <input type="text" id="editMsgInput">
@@ -447,16 +489,16 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="search-messages-modal" onclick="closeModal('search-messages-modal')">
+    <div class="modal-overlay" id="search-messages-modal" onclick="overlayClick(event, 'search-messages-modal')">
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2>Поиск по чату</h2>
             <input type="text" id="searchMsgInput" placeholder="Введите текст..." oninput="doSearchMessages()">
             <div id="searchMsgResults" style="text-align:left; max-height:200px; overflow-y:auto; margin-bottom:20px;"></div>
-            <button class="action-btn btn-secondary" onclick="closeModal('search-messages-modal')" style="width:100%;">Закрыть</button>
+            <button class="action-btn btn-secondary" onclick="closeModal('search-messages-modal')">Закрыть</button>
         </div>
     </div>
 
-    <div class="modal-overlay" id="settings-modal" onclick="closeModal('settings-modal')">
+    <div class="modal-overlay" id="settings-modal" onclick="overlayClick(event, 'settings-modal')">
         <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 400px;">
             <h2>Настройки</h2>
             <div style="background: var(--chat-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px;">
@@ -498,19 +540,20 @@
                 <div class="wallpaper-item" data-wp="linear-gradient(135deg, #667eea, #764ba2)" style="background:linear-gradient(135deg, #667eea, #764ba2)" onclick="changeWallpaper('linear-gradient(135deg, #667eea, #764ba2)', this)"></div>
                 <div class="wallpaper-item" data-wp="linear-gradient(135deg, #f093fb, #f5576c)" style="background:linear-gradient(135deg, #f093fb, #f5576c)" onclick="changeWallpaper('linear-gradient(135deg, #f093fb, #f5576c)', this)"></div>
             </div>
-            <button onclick="document.getElementById('wallpaperInput').click()" class="action-btn btn-secondary" style="width:100%; margin-top:10px;">Загрузить обои</button>
+            <button onclick="document.getElementById('wallpaperInput').click()" class="action-btn btn-secondary" style="margin-top:10px;">Загрузить обои</button>
             <input type="file" id="wallpaperInput" accept="image/*" style="display:none;" onchange="uploadWallpaper(event)">
 
-            <button class="action-btn btn-primary" onclick="closeModal('settings-modal')" style="width:100%; margin-top:20px;">Закрыть</button>
+            <button class="action-btn btn-secondary" onclick="openLogoutModal()" style="margin-top:20px; color:var(--danger); border-color:var(--danger);">Выйти из аккаунта</button>
+            <button class="action-btn btn-primary" onclick="closeModal('settings-modal')" style="margin-top:10px;">Закрыть</button>
         </div>
     </div>
 
-    <div class="modal-overlay" id="logout-modal" onclick="closeModal('logout-modal')">
+    <div class="modal-overlay" id="logout-modal" onclick="overlayClick(event, 'logout-modal')">
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2 style="color:var(--danger);">Выход</h2>
-            <p style="color:var(--text-main); margin-bottom:20px; font-size:15px;">Вы уверены?</p>
+            <p style="color:var(--text-main); margin-bottom:20px; font-size:15px;">Вы уверены? Все данные будут удалены.</p>
             <div style="display:flex; gap:10px; flex-direction: column;">
-                <button class="action-btn btn-primary" onclick="openLogoutModal()" style="background:#ef4444;">Выйти</button>
+                <button class="action-btn btn-primary" onclick="confirmLogout()" style="background:#ef4444;">Выйти</button>
                 <button class="action-btn btn-secondary" onclick="closeModal('logout-modal')">Отмена</button>
             </div>
         </div>
@@ -1227,10 +1270,11 @@
             }
         });
 
-        window.openReactionMenu = function(x, y) {
+        window.openReactionMenuFromCtx = function(e) {
+            e.stopPropagation();
             const menu = document.getElementById('reactionMenu');
-            menu.style.left = Math.min(x, window.innerWidth - 160) + 'px';
-            menu.style.top = (y - 60) + 'px';
+            menu.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
+            menu.style.top = (e.clientY - 60) + 'px';
             menu.classList.add('active');
             document.getElementById('ctxMenu').style.display = 'none';
         };
@@ -1531,6 +1575,47 @@
         window.openModal = function(id) { document.getElementById(id).classList.add('active'); };
         window.closeModal = function(id) { document.getElementById(id).classList.remove('active'); };
         
+        window.overlayClick = function(e, id) {
+            if (e.target.id === id) closeModal(id);
+        };
+
+        // --- ПРОСМОТР ЧУЖОГО ПРОФИЛЯ (в стиле Telegram) ---
+        window.openProfileModal = function() {
+            if (!currentChatID) return;
+            
+            const friendData = groupsDB[currentChatID] || usersDB[currentChatID] || {};
+            const friendName = groupsDB[currentChatID]?.name || usersDB[currentChatID]?.name || 'Собеседник';
+            
+            document.getElementById('viewProfileName').innerText = friendName;
+            document.getElementById('viewProfileId').innerText = friendData.id || 'N/A';
+            document.getElementById('viewProfileBio').innerText = friendData.status || '';
+            
+            if (friendData.status) {
+                document.getElementById('viewProfileBioRow').style.display = 'flex';
+            } else {
+                document.getElementById('viewProfileBioRow').style.display = 'none';
+            }
+            
+            const isOnline = (currentChatID === 'VOX-BOT') || (onlineStatus[currentChatID] === 'online');
+            document.getElementById('viewProfileStatus').innerText = isOnline ? 'в сети' : 'был(а) недавно';
+            document.getElementById('viewProfileStatus').style.color = isOnline ? 'var(--online)' : 'var(--text-muted)';
+
+            const viewImg = document.getElementById('viewProfileAvatarImg');
+            const viewTxt = document.getElementById('viewProfileAvatarText');
+            
+            if (friendData.avatar) {
+                viewImg.src = friendData.avatar;
+                viewImg.style.display = 'block';
+                viewTxt.style.display = 'none';
+            } else {
+                viewImg.style.display = 'none';
+                viewTxt.innerText = friendName[0].toUpperCase();
+                viewTxt.style.display = 'flex';
+            }
+            
+            openModal('view-profile-modal');
+        };
+        
         window.changeTheme = function(theme) {
             document.body.className = '';
             if (theme !== 'default') document.body.classList.add(theme + '-theme');
@@ -1596,6 +1681,7 @@
 
         window.openLogoutModal = function() { document.getElementById('logout-modal').classList.add('active'); };
         window.confirmLogout = async function() {
+            if (userID) await set(ref(db, 'status/' + userID), 'offline');
             await signOut(auth);
             localStorage.clear();
             location.reload();
@@ -1613,7 +1699,6 @@
             }
         };
 
-        window.openProfileModal = function() {};
         window.filterChats = function() {
             const query = document.getElementById('searchInput').value.toLowerCase();
             document.querySelectorAll('.chat-item').forEach(item => {
