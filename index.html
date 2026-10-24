@@ -134,7 +134,6 @@
         .chat-name { font-weight: 600; font-size: 16px; margin-bottom: 4px; color: var(--text-main); display:flex; align-items:center; gap:5px;}
         .chat-last-msg { font-size: 14px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* Иконки групп и каналов */
         .icon-group { font-size: 14px; color: var(--text-muted);}
 
         /* --- ЧАТ --- */
@@ -156,7 +155,6 @@
         .message.incoming .msg-bubble { background: var(--msg-in); color: var(--text-main); border-bottom-left-radius: 4px; }
         .message.outgoing .msg-bubble { background: var(--msg-out); color: var(--msg-out-text); border-bottom-right-radius: 4px; }
         
-        /* Имя отправителя в группах */
         .sender-name { font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 4px; display: block;}
         .message.outgoing .sender-name { display: none; }
 
@@ -234,7 +232,6 @@
 </head>
 <body>
 
-    <!-- ЭКРАН ВХОДА/РЕГИСТРАЦИИ -->
     <div id="auth-screen">
         <div class="auth-box">
             <h1>VOX</h1>
@@ -276,34 +273,35 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА ДОБАВЛЕНИЯ (Друзья/Группы) -->
     <div class="modal-overlay" id="add-friend-modal" onclick="closeModal('add-friend-modal')">
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2>Добавить</h2>
-            
             <div style="display:flex; gap:10px; margin-bottom:20px;">
                 <button onclick="switchAddTab('friend')" id="tab-friend" style="flex:1; padding:10px; border-radius:10px; border:none; background:var(--accent); color:white; cursor:pointer;">Друга</button>
-                <button onclick="switchAddTab('group')" id="tab-group" style="flex:1; padding:10px; border-radius:10px; border:none; background:var(--chat-bg); color:var(--text-main); cursor:pointer;">Группу</button>
+                <button onclick="switchAddTab('group')" id="tab-group" style="flex:1; padding:10px; border-radius:10px; border:none; background:var(--chat-bg); color:var(--text-main); cursor:pointer;">Группу/Канал</button>
             </div>
-
-            <!-- Поиск друга -->
             <div id="add-friend-pane">
                 <input type="text" id="friendSearchInput" placeholder="Введите VOX ID друга">
                 <div id="searchResult" style="margin-bottom:20px; color: var(--accent); font-size:14px; min-height:20px;"></div>
                 <button onclick="searchFriend()" style="padding:12px; background:var(--accent); border:none; border-radius:10px; color:white; cursor:pointer; margin-bottom:10px; width:100%; font-weight:600;">Найти по ID</button>
             </div>
-
-            <!-- Создание группы -->
             <div id="add-group-pane" style="display:none;">
-                <input type="text" id="groupNameInput" placeholder="Название группы">
+                <input type="text" id="groupNameInput" placeholder="Название">
                 <select id="groupTypeSelect" style="width:100%; padding:15px; background:var(--chat-bg); border:1px solid var(--border-color); border-radius:10px; color:var(--text-main); margin-bottom:15px; font-size:16px; outline:none;">
-                    <option value="group">👥 Группа (все пишут)</option>
-                    <option value="channel">📢 Канал (только админ)</option>
+                    <option value="group">👥 Группа</option>
+                    <option value="channel">📢 Канал</option>
                 </select>
                 <button onclick="createGroup()" style="padding:12px; background:#10b981; border:none; border-radius:10px; color:white; cursor:pointer; margin-bottom:10px; width:100%; font-weight:600;">Создать</button>
             </div>
-
             <button onclick="closeModal('add-friend-modal')" style="padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; width:100%; font-weight:600;">Закрыть</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="invite-modal" onclick="closeModal('invite-modal')">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <h2>Добавить участника</h2>
+            <div id="inviteList" style="text-align:left; max-height:200px; overflow-y:auto; margin-bottom:20px;"></div>
+            <button onclick="closeModal('invite-modal')" style="padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; width:100%; font-weight:600;">Закрыть</button>
         </div>
     </div>
 
@@ -322,10 +320,9 @@
         <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 400px;">
             <h2>Настройки</h2>
             <div style="background: var(--chat-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-                <p style="color:var(--text-muted); font-size: 13px; margin-bottom:5px;">Ваш ID (нажмите чтобы скопировать):</p>
+                <p style="color:var(--text-muted); font-size: 13px; margin-bottom:5px;">Ваш ID:</p>
                 <div id="myIdDisplay" onclick="copyMyId()" style="font-size: 18px; font-weight: 700; color: var(--accent); cursor: pointer; letter-spacing:1px;">VOX-0000</div>
             </div>
-
             <div class="settings-row">
                 <span>Тема:</span>
                 <div class="settings-btn-group" id="themeGroup">
@@ -333,26 +330,16 @@
                     <button class="settings-opt" onclick="changeTheme('light')">Светлая</button>
                 </div>
             </div>
-            <div class="settings-row">
-                <span>Шрифт:</span>
-                <div class="settings-btn-group">
-                    <button class="settings-opt" onclick="changeFontSize('14px')">S</button>
-                    <button class="settings-opt" onclick="changeFontSize('16px')">M</button>
-                    <button class="settings-opt" onclick="changeFontSize('18px')">L</button>
-                </div>
-            </div>
-            
             <div style="text-align:left; margin-top:20px; font-weight:600; font-size:14px;">Обои чата:</div>
             <div class="wallpaper-grid" id="wallpaperGrid">
                 <div class="wallpaper-item none" onclick="changeWallpaper('none', this)">Нет</div>
                 <div class="wallpaper-item" data-wp="linear-gradient(135deg, #667eea, #764ba2)" style="background:linear-gradient(135deg, #667eea, #764ba2)" onclick="changeWallpaper('linear-gradient(135deg, #667eea, #764ba2)', this)"></div>
                 <div class="wallpaper-item" data-wp="linear-gradient(135deg, #f093fb, #f5576c)" style="background:linear-gradient(135deg, #f093fb, #f5576c)" onclick="changeWallpaper('linear-gradient(135deg, #f093fb, #f5576c)', this)"></div>
-                <div class="wallpaper-item" data-wp="linear-gradient(135deg, #4facfe, #00f2fe)" style="background:linear-gradient(135deg, #4facfe, #00f2fe)" onclick="changeWallpaper('linear-gradient(135deg, #4facfe, #00f2fe)', this)"></div>
             </div>
-            <button onclick="document.getElementById('wallpaperInput').click()" style="width:100%; margin-top:10px; padding:12px; background:var(--chat-bg); border:1px dashed var(--accent); border-radius:10px; color:var(--accent); cursor:pointer; font-weight:600;">Загрузить свои обои</button>
+            <button onclick="document.getElementById('wallpaperInput').click()" style="width:100%; margin-top:10px; padding:12px; background:var(--chat-bg); border:1px dashed var(--accent); border-radius:10px; color:var(--accent); cursor:pointer; font-weight:600;">Загрузить обои</button>
             <input type="file" id="wallpaperInput" accept="image/*" style="display:none;" onchange="uploadWallpaper(event)">
 
-            <button onclick="openLogoutModal()" style="width:100%; margin-top:20px; padding:12px; background:rgba(239, 68, 68, 0.1); border:1px solid var(--danger); border-radius:10px; color:var(--danger); cursor:pointer; font-weight:600;">Выйти из аккаунта</button>
+            <button onclick="openLogoutModal()" style="width:100%; margin-top:20px; padding:12px; background:rgba(239, 68, 68, 0.1); border:1px solid var(--danger); border-radius:10px; color:var(--danger); cursor:pointer; font-weight:600;">Выйти</button>
             <button onclick="closeModal('settings-modal')" style="width:100%; margin-top:10px; padding:12px; background:var(--accent); border:none; border-radius:10px; color:white; cursor:pointer; font-weight:600;">Закрыть</button>
         </div>
     </div>
@@ -360,7 +347,7 @@
     <div class="modal-overlay" id="logout-modal" onclick="closeModal('logout-modal')">
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2 style="color:var(--danger);">Выход</h2>
-            <p style="color:var(--text-main); margin-bottom:20px; font-size:15px; line-height:1.5;">Вы уверены? <br><b>Все данные удалятся с этого устройства.</b></p>
+            <p style="color:var(--text-main); margin-bottom:20px; font-size:15px;">Вы уверены?</p>
             <div style="display:flex; gap:10px;">
                 <button onclick="closeModal('logout-modal')" style="flex:1; padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; font-weight:600;">Отмена</button>
                 <button onclick="confirmLogout()" style="flex:1; padding:12px; background:var(--danger); border:none; border-radius:10px; color:white; cursor:pointer; font-weight:600;">Выйти</button>
@@ -368,7 +355,6 @@
         </div>
     </div>
 
-    <!-- ОСНОВНОЙ ИНТЕРФЕЙС -->
     <div class="vox-container" id="mainApp">
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -399,16 +385,16 @@
                     <img id="headerAvatarImg" src="" alt="Avatar">
                     <span id="headerAvatarText">?</span>
                 </div>
-                <div style="display:flex; flex-direction:column;">
+                <div style="display:flex; flex-direction:column; flex:1;">
                     <div class="chat-header-info" id="headerName">Выберите чат</div>
                     <div class="chat-header-status" id="typingStatus"></div>
                 </div>
+                <button id="inviteBtn" onclick="event.stopPropagation(); openInviteModal()" style="display:none; background:none; border:none; color:var(--accent); font-size:20px; cursor:pointer;">➕</button>
             </div>
             <div class="messages" id="messagesContainer">
                  <div style="text-align:center; color:var(--text-muted); margin-top:50px;">Выберите чат для начала общения</div>
             </div>
             
-            <!-- Панели -->
             <div class="panel" id="stickerPanel">
                 <img src="https://em-content.zobj.net/source/apple/391/grinning-face_1f600.png" onclick="sendSticker(this.src)">
                 <img src="https://em-content.zobj.net/source/apple/391/face-with-tears-of-joy_1f602.png" onclick="sendSticker(this.src)">
@@ -449,12 +435,10 @@
     <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="sendImage(event)">
 
     <script type="module">
-        // --- ИМПОРТ FIREBASE ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getDatabase, ref, push, onValue, set, get, child, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-        // --- КОНФИГУРАЦИЯ ---
         const firebaseConfig = {
             apiKey: "AIzaSyCfoqJjADzqTjt6Fm5TscvJexQVlZeHloQ",
             authDomain: "vox-messenger-41233.firebaseapp.com",
@@ -469,7 +453,6 @@
         const db = getDatabase(app);
         const auth = getAuth(app);
 
-        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
         let currentUser = null; 
         let userID = null; 
         let isRegisterMode = false;
@@ -489,7 +472,6 @@
         let isRecording = false;
         let currentStream = null;
 
-        // --- UI АВТОРИЗАЦИИ ---
         window.toggleAuthMode = function() {
             isRegisterMode = !isRegisterMode;
             document.getElementById('auth-subtitle').innerText = isRegisterMode ? 'Регистрация' : 'Вход в аккаунт';
@@ -538,7 +520,6 @@
             }
         });
 
-        // --- АВАТАРКА ---
         window.processAvatar = function(event, context) {
             const file = event.target.files[0];
             if (!file) return;
@@ -567,7 +548,6 @@
             reader.readAsDataURL(file);
         };
 
-        // --- ИНИЦИАЛИЗАЦИЯ ---
         async function initApp() {
             onValue(ref(db, 'users'), (snapshot) => {
                 usersDB = snapshot.val() || {};
@@ -619,7 +599,6 @@
             }
         };
 
-        // --- СПИСОК ЧАТОВ ---
         function renderChatList() {
             const container = document.getElementById('chatList');
             container.innerHTML = '';
@@ -681,7 +660,6 @@
             });
         }
 
-        // --- ДОБАВЛЕНИЕ (Друзья / Группы) ---
         window.switchAddTab = function(tab) {
             if (tab === 'friend') {
                 document.getElementById('add-friend-pane').style.display = 'block';
@@ -713,7 +691,6 @@
                 members: { [userID]: true }
             });
 
-            // Добавляем группу себе в чаты
             await set(ref(db, `user_chats/${userID}/${groupId}`), true);
             
             closeModal('add-friend-modal');
@@ -721,7 +698,31 @@
             showNotification('Успех', 'Создано!');
         };
 
-        // --- ОТКРЫТИЕ ЧАТА ---
+        window.openInviteModal = function() {
+            if (!currentChatID || !groupsDB[currentChatID]) return;
+            const container = document.getElementById('inviteList');
+            container.innerHTML = '';
+            
+            Object.keys(usersDB).forEach(uid => {
+                if (uid === userID || groupsDB[currentChatID].members[uid]) return;
+                const user = usersDB[uid];
+                const div = document.createElement('div');
+                div.style.padding = '10px';
+                div.style.borderBottom = '1px solid var(--border-color)';
+                div.style.cursor = 'pointer';
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.innerHTML = `<div class="avatar" style="width:30px; height:30px; font-size:12px; margin-right:10px;">${user.avatar ? `<img src="${user.avatar}" style="display:block">` : user.name[0]}</div> ${user.name}`;
+                div.onclick = async () => {
+                    await update(ref(db, `groups/${currentChatID}/members`), { [uid]: true });
+                    await set(ref(db, `user_chats/${uid}/${currentChatID}`), true);
+                    showNotification('Группа', 'Участник добавлен!');
+                };
+                container.appendChild(div);
+            });
+            openModal('invite-modal');
+        };
+
         window.openChat = function(friendID, friendName, isGroup) {
             if (isRecording) stopVoiceRecord();
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -731,10 +732,11 @@
             
             document.getElementById('headerName').innerText = friendName;
             document.getElementById('typingStatus').innerText = isGroup ? 'группа' : (friendID === 'VOX-BOT' ? 'онлайн' : 'в сети');
+            document.getElementById('inviteBtn').style.display = isGroup ? 'block' : 'none';
             
             let avatarSrc = null;
             if (isGroup && groupsDB[friendID]) {
-                avatarSrc = null; // У групп нет аватарок
+                avatarSrc = null;
             } else if (usersDB[friendID]) {
                 avatarSrc = usersDB[friendID].avatar;
             }
@@ -776,7 +778,6 @@
             if (unsubscribeMessages) unsubscribeMessages();
         };
 
-        // --- РЕНДЕР СООБЩЕНИЙ ---
         function renderMessages(msgsObj, isGroup) {
             const container = document.getElementById('messagesContainer');
             container.innerHTML = '';
@@ -839,7 +840,6 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        // --- КОНТЕКСТНОЕ МЕНЮ ---
         function showCtxMenu(x, y, key, msgData) {
             ctxMsgKey = key;
             ctxMsgData = msgData;
@@ -867,7 +867,7 @@
         };
 
         window.ctxEdit = function() {
-            if (ctxMsgData.sender !== userID || ctxMsgData.type !== 'text') return alert('Нельзя редактировать это сообщение!');
+            if (ctxMsgData.sender !== userID || ctxMsgData.type !== 'text') return alert('Нельзя редактировать!');
             document.getElementById('editMsgInput').value = ctxMsgData.text;
             openModal('edit-message-modal');
             document.getElementById('ctxMenu').style.display = 'none';
@@ -890,7 +890,6 @@
             document.getElementById('ctxMenu').style.display = 'none';
         };
 
-        // --- ПАНЕЛИ ---
         window.togglePanel = function(id) {
             document.querySelectorAll('.panel').forEach(p => {
                 if(p.id !== id) p.classList.remove('active');
@@ -917,14 +916,12 @@
             document.getElementById('stickerPanel').classList.remove('active');
         };
 
-        // --- ОТПРАВКА ---
         window.sendMessage = async function() {
             if (!currentChatID || isSending) return;
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if (!text) return;
 
-            // Проверка для каналов
             const isGroup = groupsDB[currentChatID] !== undefined;
             if (isGroup && groupsDB[currentChatID].type === 'channel' && groupsDB[currentChatID].creator !== userID) {
                 return alert('В этом канале писать может только создатель!');
@@ -975,7 +972,6 @@
 
         window.handleKeyPress = function(event) { if (event.key === 'Enter') sendMessage(); };
 
-        // --- ПОИСК ---
         window.searchFriend = async function() {
             const queryID = document.getElementById('friendSearchInput').value.trim().toUpperCase();
             const resultEl = document.getElementById('searchResult');
@@ -1010,7 +1006,6 @@
             openChat(friendID, friendName, false);
         };
 
-        // --- МЕДИА ---
         window.openImagePicker = function() { document.getElementById('imageInput').click(); };
         window.sendImage = function(event) {
             const file = event.target.files[0];
@@ -1084,7 +1079,6 @@
             }
         }
 
-        // --- НАСТРОЙКИ ---
         window.openModal = function(id) { document.getElementById(id).classList.add('active'); };
         window.closeModal = function(id) { document.getElementById(id).classList.remove('active'); };
         
@@ -1163,7 +1157,6 @@
             });
         };
 
-        // --- СТАРТ ---
         window.addEventListener('load', () => {
             if (localStorage.getItem('voxTheme')) changeTheme(localStorage.getItem('voxTheme'));
             if (localStorage.getItem('voxFontSize')) changeFontSize(localStorage.getItem('voxFontSize'));
