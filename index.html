@@ -173,6 +173,7 @@
         .msg-time { position: absolute; right: 10px; bottom: 4px; font-size: 11px; color: rgba(255,255,255,0.6); display: flex; align-items: center; gap: 3px;}
         .message.incoming .msg-time { color: var(--text-muted); }
         .checkmark { color: #60a5fa; font-size: 12px;}
+        .checkmark.read { color: #8b5cf6; }
 
         .input-area { padding: 10px 15px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; background: var(--sidebar-bg); align-items: center; padding-bottom: max(10px, env(safe-area-inset-bottom)); position: relative;}
         .icon-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted); transition: 0.2s; width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; flex-shrink: 0;}
@@ -317,6 +318,15 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="search-messages-modal" onclick="closeModal('search-messages-modal')">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <h2>Поиск по чату</h2>
+            <input type="text" id="searchMsgInput" placeholder="Введите текст..." oninput="doSearchMessages()">
+            <div id="searchMsgResults" style="text-align:left; max-height:200px; overflow-y:auto; margin-bottom:20px;"></div>
+            <button onclick="closeModal('search-messages-modal')" style="padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; width:100%; font-weight:600;">Закрыть</button>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="settings-modal" onclick="closeModal('settings-modal')">
         <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 400px;">
             <h2>Настройки</h2>
@@ -390,6 +400,7 @@
                     <div class="chat-header-info" id="headerName">Выберите чат</div>
                     <div class="chat-header-status" id="typingStatus"></div>
                 </div>
+                <button onclick="event.stopPropagation(); openSearchMessages()" style="background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted); margin-right:10px;">🔍</button>
                 <button id="inviteBtn" onclick="event.stopPropagation(); openInviteModal()" style="display:none; background:none; border:none; color:var(--accent); font-size:20px; cursor:pointer;">➕</button>
             </div>
             <div class="messages" id="messagesContainer">
@@ -427,7 +438,7 @@
                 <button class="icon-btn" onclick="togglePanel('emojiPanel')" title="Эмодзи">😀</button>
                 <button class="icon-btn" onclick="openImagePicker()" title="Фото">📷</button>
                 <button class="icon-btn" onclick="startVoiceRecord()" id="voiceBtn" title="Голосовое">🎙️</button>
-                <input type="text" id="msgInput" placeholder="Сообщение..." onkeypress="handleKeyPress(event)">
+                <input type="text" id="msgInput" placeholder="Сообщение..." onkeypress="handleKeyPress(event)" oninput="handleTyping()">
                 <button class="send-btn" id="sendBtn" onclick="sendMessage()"><svg viewBox="0 0 24 24"><path fill="white" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
             </div>
         </div>
@@ -461,10 +472,14 @@
         let usersDB = {};
         let groupsDB = {}; 
         let currentChatID = null;
+        let currentChatStatus = 'offline';
+        let typingTimeout = null;
         let tempAvatarBase64 = null;
         let replyTo = null;
         let isSending = false;
         let unsubscribeMessages = null;
+        let unsubscribeStatus = null;
+        let unsubscribeTyping = null;
         let ctxMsgKey = null;
         let ctxMsgData = null;
         
@@ -730,10 +745,12 @@
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             if (window.innerWidth <= 768) document.getElementById('msgInput').blur();
 
+            // Сбрасываем статус печати у старого чата
+            if (currentChatID && currentChatID !== 'VOX-BOT') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
+
             currentChatID = friendID;
             
             document.getElementById('headerName').innerText = friendName;
-            document.getElementById('typingStatus').innerText = isGroup ? 'группа' : (friendID === 'VOX-BOT' ? 'онлайн' : 'в сети');
             document.getElementById('inviteBtn').style.display = isGroup ? 'block' : 'none';
             
             let avatarSrc = null;
@@ -760,7 +777,35 @@
             
             renderChatList();
 
+            // ОТПИСЫВАЕМСЯ ОТ СТАРЫХ СЛУШАТЕЛЕЙ
             if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribeStatus) unsubscribeStatus();
+            if (unsubscribeTyping) unsubscribeTyping();
+
+            // СЛУШАЕМ СТАТУС И ПЕЧАТЬ
+            if (!isGroup && friendID !== 'VOX-BOT') {
+                const statusRef = ref(db, 'status/' + friendID);
+                const typingRef = ref(db, 'typing/' + friendID + '/' + userID);
+                
+                unsubscribeStatus = onValue(statusRef, (snapshot) => {
+                    currentChatStatus = snapshot.val() || 'offline';
+                    updateChatHeaderStatus(isGroup, friendID);
+                    if (chatData[friendID]?.messages) renderMessages(chatData[friendID].messages, isGroup);
+                });
+                
+                unsubscribeTyping = onValue(typingRef, (snapshot) => {
+                    if (snapshot.val() === 'typing') {
+                        document.getElementById('typingStatus').innerText = 'печатает...';
+                        document.getElementById('typingStatus').style.color = 'var(--accent)';
+                    } else {
+                        updateChatHeaderStatus(isGroup, friendID);
+                    }
+                });
+            } else {
+                currentChatStatus = 'online';
+                updateChatHeaderStatus(isGroup, friendID);
+            }
+
             const chatID = [userID, friendID].sort().join('_');
             const messagesRef = ref(db, 'messages/' + chatID);
             
@@ -770,14 +815,33 @@
             });
         };
 
+        function updateChatHeaderStatus(isGroup, friendID) {
+            const statusEl = document.getElementById('typingStatus');
+            if (isGroup) {
+                statusEl.innerText = groupsDB[friendID]?.type === 'channel' ? 'канал' : 'группа';
+                statusEl.style.color = 'var(--text-muted)';
+            } else if (friendID === 'VOX-BOT') {
+                statusEl.innerText = 'онлайн';
+                statusEl.style.color = 'var(--online)';
+            } else {
+                statusEl.innerText = currentChatStatus === 'online' ? 'в сети' : 'был(а) недавно';
+                statusEl.style.color = currentChatStatus === 'online' ? 'var(--online)' : 'var(--text-muted)';
+            }
+        }
+
         window.closeChat = function() {
             if (isRecording) stopVoiceRecord();
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             document.getElementById('msgInput').blur();
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('chatArea').classList.remove('active');
+            
+            if (currentChatID && currentChatID !== 'VOX-BOT') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
+            
             currentChatID = null;
             if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribeStatus) unsubscribeStatus();
+            if (unsubscribeTyping) unsubscribeTyping();
         };
 
         function renderMessages(msgsObj, isGroup) {
@@ -809,7 +873,16 @@
                 }
 
                 let replyHTML = msg.reply ? `<div class="reply-quote">${msg.reply}</div>` : '';
-                let checkmark = isMine ? '<span class="checkmark">✓✓</span>' : '';
+                
+                // ЛОГИКА ГАЛОЧЕК (Прочитано, только если собеседник онлайн)
+                let checkmark = '';
+                if (isMine) {
+                    if (currentChatStatus === 'online' && !isGroup && currentChatID !== 'VOX-BOT') {
+                        checkmark = '<span class="checkmark read">✓✓</span>';
+                    } else {
+                        checkmark = '<span class="checkmark">✓✓</span>';
+                    }
+                }
                 
                 if (msg.type === 'voice') {
                     div.innerHTML = `${senderHTML}<div class="msg-bubble"><audio controls src="${msg.text}"></audio><div class="msg-time">${msg.time} ${checkmark}</div></div>`;
@@ -841,6 +914,45 @@
             });
             container.scrollTop = container.scrollHeight;
         }
+
+        // --- ФУНКЦИЯ ПЕЧАТИ ---
+        window.handleTyping = function() {
+            if (!currentChatID || currentChatID === 'VOX-BOT') return;
+            const typingRef = ref(db, 'typing/' + userID + '/' + currentChatID);
+            set(typingRef, 'typing');
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                set(typingRef, 'idle');
+            }, 2000);
+        };
+
+        // --- ПОИСК ПО СООБЩЕНИЯМ ---
+        window.openSearchMessages = function() {
+            if (!currentChatID) return alert('Выберите чат!');
+            document.getElementById('searchMsgInput').value = '';
+            document.getElementById('searchMsgResults').innerHTML = '';
+            openModal('search-messages-modal');
+        };
+
+        window.doSearchMessages = function() {
+            const query = document.getElementById('searchMsgInput').value.toLowerCase();
+            const results = document.getElementById('searchMsgResults');
+            results.innerHTML = '';
+            if (!query || !currentChatID) return;
+            
+            const msgs = chatData[currentChatID]?.messages || {};
+            Object.values(msgs).forEach(msg => {
+                if (msg.text && msg.text.toLowerCase().includes(query)) {
+                    const div = document.createElement('div');
+                    div.style.padding = '10px';
+                    div.style.borderBottom = '1px solid var(--border-color)';
+                    div.style.fontSize = '13px';
+                    div.innerText = msg.text;
+                    results.appendChild(div);
+                }
+            });
+            if (results.innerHTML === '') results.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">Ничего не найдено</div>';
+        };
 
         function showCtxMenu(x, y, key, msgData) {
             ctxMsgKey = key;
@@ -936,7 +1048,7 @@
             const chatID = [userID, currentChatID].sort().join('_');
             const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-            // Собираем объект сообщения, не добавляя пустые поля
+            // ФИКС БАГА: не отправляем пустой reply
             const msgData = {
                 sender: userID,
                 text: text,
@@ -951,6 +1063,8 @@
                 input.value = '';
                 replyTo = null;
                 input.placeholder = "Сообщение...";
+                // Сбрасываем статус печати
+                if (currentChatID !== 'VOX-BOT') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
             } catch (e) {
                 alert('Ошибка отправки: ' + e.message);
             } finally {
