@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vox-cache-v6'; // v6
+const CACHE_NAME = 'vox-cache-v6'; // v7
 const urlsToCache = [
     './',
     './index.html',
