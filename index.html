@@ -153,7 +153,7 @@
         .chat-header-info { font-size: 17px; font-weight: 600; color: var(--text-main); }
         .chat-header-status { font-size: 13px; color: var(--accent); }
         
-        .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth;}
         .message { max-width: 75%; display: flex; flex-direction: column; position: relative; animation: popIn 0.2s; touch-action: pan-y;}
         @keyframes popIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .message.incoming { align-self: flex-start; }
@@ -481,7 +481,7 @@
         let usersDB = {};
         let groupsDB = {}; 
         let unreadCounts = {}; 
-        let onlineStatus = {}; // Кэш статусов для списка чатов
+        let onlineStatus = {}; 
         let currentChatID = null;
         let currentChatStatus = 'offline';
         let typingTimeout = null;
@@ -593,7 +593,6 @@
                 renderChatList();
             });
 
-            // Слушаем статусы всех юзеров для точек в списке чатов
             onValue(ref(db, 'status'), (snapshot) => {
                 onlineStatus = snapshot.val() || {};
                 renderChatList();
@@ -666,7 +665,6 @@
                     }
                 }
                 
-                // Счётчик непрочитанных
                 const unread = unreadCounts[friendID] || 0;
 
                 const msgs = chatData[friendID] ? chatData[friendID].messages : null;
@@ -683,7 +681,6 @@
                 div.className = 'chat-item' + (friendID === currentChatID ? ' active' : '');
                 div.onclick = () => openChat(friendID, friendName, isGroup);
                 
-                // Онлайн-статус для точки
                 const isOnline = (friendID === 'VOX-BOT') || (onlineStatus[friendID] === 'online');
 
                 div.innerHTML = `
@@ -764,7 +761,6 @@
             openModal('invite-modal');
         };
 
-        // ОЧИСТКА ЧАТА
         window.openClearChatModal = function() {
             if (!currentChatID) return;
             if (confirm('Очистить историю чата? У собеседника она останется.')) {
@@ -780,12 +776,10 @@
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             if (window.innerWidth <= 768) document.getElementById('msgInput').blur();
 
-            // Сбрасываем статус печати у старого чата
             if (currentChatID && currentChatID !== 'VOX-BOT') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
 
             currentChatID = friendID;
             
-            // Сбрасываем счётчик непрочитанных
             unreadCounts[friendID] = 0;
             renderChatList();
 
@@ -816,12 +810,10 @@
             
             renderChatList();
 
-            // ОТПИСЫВАЕМСЯ ОТ СТАРЫХ СЛУШАТЕЛЕЙ
             if (unsubscribeMessages) unsubscribeMessages();
             if (unsubscribeStatus) unsubscribeStatus();
             if (unsubscribeTyping) unsubscribeTyping();
 
-            // СЛУШАЕМ СТАТУС И ПЕЧАТЬ
             if (!isGroup && friendID !== 'VOX-BOT') {
                 const statusRef = ref(db, 'status/' + friendID);
                 const typingRef = ref(db, 'typing/' + friendID + '/' + userID);
@@ -913,7 +905,6 @@
 
                 let replyHTML = msg.reply ? `<div class="reply-quote">${msg.reply}</div>` : '';
                 
-                // ЛОГИКА ГАЛОЧЕК (Прочитано, только если собеседник онлайн)
                 let checkmark = '';
                 if (isMine) {
                     if (currentChatStatus === 'online' && !isGroup && currentChatID !== 'VOX-BOT') {
@@ -931,7 +922,6 @@
                     div.innerHTML = `${senderHTML}<div class="msg-bubble">${replyHTML}${msg.text}<span class="msg-time">${msg.time} ${checkmark}</span></div>`;
                 }
 
-                // СВАЙП ДЛЯ ОТВЕТА
                 let startX = 0;
                 let currentX = 0;
                 div.addEventListener('touchstart', (e) => {
@@ -951,7 +941,6 @@
                     div.style.transition = 'transform 0.2s';
                     div.style.transform = 'translateX(0)';
                     if (diff > 70) {
-                        // Это свайп-ответ
                         replyTo = msg.text;
                         document.getElementById('msgInput').placeholder = `Ответ: ${replyTo.substring(0, 15)}...`;
                         document.getElementById('msgInput').focus();
@@ -978,10 +967,13 @@
                 if(msg.reaction) div.innerHTML += `<div class="reaction">${msg.reaction}</div>`;
                 container.appendChild(div);
             });
-            container.scrollTop = container.scrollHeight;
+            
+            // ФИКС БАГА: Прокрутка вниз
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 10);
         }
 
-        // --- ФУНКЦИЯ ПЕЧАТИ ---
         window.handleTyping = function() {
             if (!currentChatID || currentChatID === 'VOX-BOT') return;
             const typingRef = ref(db, 'typing/' + userID + '/' + currentChatID);
@@ -992,7 +984,6 @@
             }, 2000);
         };
 
-        // --- ПОИСК ПО СООБЩЕНИЯМ ---
         window.openSearchMessages = function() {
             if (!currentChatID) return alert('Выберите чат!');
             document.getElementById('searchMsgInput').value = '';
@@ -1114,7 +1105,6 @@
             const chatID = [userID, currentChatID].sort().join('_');
             const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-            // ФИКС БАГА: не отправляем пустой reply
             const msgData = {
                 sender: userID,
                 text: text,
@@ -1129,8 +1119,14 @@
                 input.value = '';
                 replyTo = null;
                 input.placeholder = "Сообщение...";
-                // Сбрасываем статус печати
                 if (currentChatID !== 'VOX-BOT') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
+                
+                // ФИКС БАГА: Принудительная прокрутка вниз после отправки
+                const container = document.getElementById('messagesContainer');
+                setTimeout(() => {
+                    container.scrollTop = container.scrollHeight;
+                }, 50);
+                
             } catch (e) {
                 alert('Ошибка отправки: ' + e.message);
             } finally {
@@ -1142,10 +1138,11 @@
                 setTimeout(async () => {
                     let reply = "";
                     const lower = text.toLowerCase();
-                    if (lower.includes('/help')) reply = "Команды бота: привет, как дела, кс, [цифры]";
+                    if (lower.includes('/help')) reply = "Команды бота: привет, как дела, кс, [цифры], /погода";
                     else if (lower.includes('привет')) reply = "Привет, я Vox Бот! Чем могу помочь?";
                     else if (lower.includes('дела')) reply = "У меня всё отлично, работаю 24/7.";
                     else if (lower.includes('кс') || lower.includes('cs')) reply = "В CS2? Я бы сыграл, но у меня руки из кода.";
+                    else if (lower.includes('погода')) reply = "В Томске сегодня отличная погода для кодинга! ☀️";
                     else if (/^[\d\s+\-*\/]+$/.test(text)) {
                         try { reply = "Результат: " + eval(text); } catch(e) { reply = "Не могу посчитать."; }
                     }
