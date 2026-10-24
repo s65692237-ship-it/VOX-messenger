@@ -293,7 +293,7 @@
         /* Модалки */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 4000; justify-content: center; align-items: center; padding: 20px;}
         .modal-overlay.active { display: flex; }
-        .modal-card { background: var(--sidebar-bg); padding: 30px; border-radius: 24px; text-align: center; width: 100%; max-width: 360px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--border-color); backdrop-filter: var(--glass-effect); transition: background-color 0.5s;}
+        .modal-card { background: var(--sidebar-bg); padding: 30px; border-radius: 24px; text-align: center; width: 100%; max-width: 360px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--border-color); backdrop-filter: var(--glass-effect); transition: background-color 0.5s; position: relative; z-index: 4001;}
         .modal-card h2 { color: var(--text-main); margin-bottom: 20px; transition: color 0.5s;}
         .modal-card input { width: 100%; padding: 15px; background: var(--chat-bg); border: 1px solid var(--accent); border-radius: 10px; color: var(--text-main); margin-bottom: 20px; text-align: center; font-size: 16px; outline: none; transition: background-color 0.5s;}
         
@@ -303,11 +303,11 @@
 
         .settings-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; color: var(--text-main); transition: color 0.5s;}
         .settings-btn-group { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;}
-        .settings-opt { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--chat-bg); color: var(--text-main); cursor: pointer; transition: 0.2s, background-color 0.5s; font-size: 13px;}
+        .settings-opt { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--chat-bg); color: var(--text-main); cursor: pointer; transition: 0.2s, background-color 0.5s; font-size: 13px; min-height: 44px; display: flex; align-items: center; justify-content: center;}
         .settings-opt.active { background: var(--accent); color: #fff; border-color: var(--accent); }
         
         .wallpaper-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px;}
-        .wallpaper-item { aspect-ratio: 1; border-radius: 8px; cursor: pointer; border: 2px solid transparent; background-size: cover; background-position: center; transition: 0.2s;}
+        .wallpaper-item { aspect-ratio: 1; border-radius: 8px; cursor: pointer; border: 2px solid transparent; background-size: cover; background-position: center; transition: 0.2s; min-height: 44px;}
         .wallpaper-item.selected { border-color: var(--accent); }
         .wallpaper-item.none { background: var(--chat-bg); display: flex; justify-content: center; align-items: center; font-size: 11px; color: var(--text-muted); }
 
@@ -319,6 +319,12 @@
         input:checked + .slider { background-color: var(--accent); }
         input:checked + .slider:before { transform: translateX(20px); }
 
+        /* Кнопки действий в модалках */
+        .action-btn { padding: 14px 20px; border-radius: 12px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; min-height: 48px; display: flex; align-items: center; justify-content: center; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary { background: var(--chat-bg); color: var(--text-main); border: 1px solid var(--border-color); }
+
         @media (max-width: 768px) {
             .vox-container { border-radius: 0; border: none; max-height: 100%; }
             .sidebar { width: 100%; position: absolute; z-index: 10; height: 100%; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s; }
@@ -328,6 +334,10 @@
             .back-btn { display: flex; }
             .message { max-width: 85%; }
             .chat-header { padding-top: max(10px, env(safe-area-inset-top)); }
+            /* Адаптив для мобилки: модалки и кнопки */
+            .modal-card { max-width: 100%; padding: 20px; }
+            .action-btn { width: 100%; font-size: 16px; padding: 14px; }
+            .settings-opt { flex: 1; text-align: center; }
         }
     </style>
 </head>
@@ -373,7 +383,7 @@
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2>Переслать в...</h2>
             <div id="forwardList" style="text-align:left; max-height:300px; overflow-y:auto; margin-bottom:20px;"></div>
-            <button onclick="closeModal('forward-modal')" style="padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; width:100%; font-weight:600;">Отмена</button>
+            <button class="action-btn btn-secondary" onclick="closeModal('forward-modal')" style="width:100%;">Отмена</button>
         </div>
     </div>
 
@@ -387,9 +397,9 @@
             <input type="file" id="editAvatarInput" accept="image/*" style="display: none;" onchange="processAvatar(event, 'edit')">
             <input type="text" id="editNameInput" placeholder="Новый никнейм" maxlength="15">
             <input type="text" id="editStatusInput" placeholder="Статус (о себе)" maxlength="30">
-            <div style="display:flex; gap:10px;">
-                <button onclick="closeModal('edit-profile-modal')" style="flex:1; padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; font-weight:600;">Отмена</button>
-                <button onclick="saveProfile()" style="flex:1; padding:12px; background:var(--accent); border:none; border-radius:10px; color:white; cursor:pointer; font-weight:600;">Сохранить</button>
+            <div style="display:flex; gap:10px; flex-direction: column;">
+                <button class="action-btn btn-primary" onclick="saveProfile()">Сохранить</button>
+                <button class="action-btn btn-secondary" onclick="closeModal('edit-profile-modal')">Отмена</button>
             </div>
         </div>
     </div>
@@ -398,13 +408,13 @@
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2>Добавить</h2>
             <div style="display:flex; gap:10px; margin-bottom:20px;">
-                <button onclick="switchAddTab('friend')" id="tab-friend" style="flex:1; padding:10px; border-radius:10px; border:none; background:var(--accent); color:white; cursor:pointer;">Друга</button>
-                <button onclick="switchAddTab('group')" id="tab-group" style="flex:1; padding:10px; border-radius:10px; border:none; background:var(--chat-bg); color:var(--text-main); cursor:pointer;">Группу/Канал</button>
+                <button class="action-btn btn-secondary" onclick="switchAddTab('friend')" id="tab-friend" style="flex:1;">Друга</button>
+                <button class="action-btn btn-secondary" onclick="switchAddTab('group')" id="tab-group" style="flex:1;">Группу/Канал</button>
             </div>
             <div id="add-friend-pane">
                 <input type="text" id="friendSearchInput" placeholder="Введите VOX ID друга">
                 <div id="searchResult" style="margin-bottom:20px; color: var(--accent); font-size:14px; min-height:20px;"></div>
-                <button onclick="searchFriend()" style="padding:12px; background:var(--accent); border:none; border-radius:10px; color:white; cursor:pointer; margin-bottom:10px; width:100%; font-weight:600;">Найти по ID</button>
+                <button class="action-btn btn-primary" onclick="searchFriend()" style="width:100%; margin-bottom:10px;">Найти по ID</button>
             </div>
             <div id="add-group-pane" style="display:none;">
                 <input type="text" id="groupNameInput" placeholder="Название">
@@ -412,9 +422,9 @@
                     <option value="group">👥 Группа</option>
                     <option value="channel">📢 Канал</option>
                 </select>
-                <button onclick="createGroup()" style="padding:12px; background:#10b981; border:none; border-radius:10px; color:white; cursor:pointer; margin-bottom:10px; width:100%; font-weight:600;">Создать</button>
+                <button class="action-btn btn-primary" onclick="createGroup()" style="width:100%; margin-bottom:10px;">Создать</button>
             </div>
-            <button onclick="closeModal('add-friend-modal')" style="padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; width:100%; font-weight:600;">Закрыть</button>
+            <button class="action-btn btn-secondary" onclick="closeModal('add-friend-modal')" style="width:100%;">Закрыть</button>
         </div>
     </div>
 
@@ -422,7 +432,7 @@
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2>Добавить участника</h2>
             <div id="inviteList" style="text-align:left; max-height:200px; overflow-y:auto; margin-bottom:20px;"></div>
-            <button onclick="closeModal('invite-modal')" style="padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; width:100%; font-weight:600;">Закрыть</button>
+            <button class="action-btn btn-secondary" onclick="closeModal('invite-modal')" style="width:100%;">Закрыть</button>
         </div>
     </div>
 
@@ -430,9 +440,9 @@
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2>Редактировать</h2>
             <input type="text" id="editMsgInput">
-            <div style="display:flex; gap:10px;">
-                <button onclick="closeModal('edit-message-modal')" style="flex:1; padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; font-weight:600;">Отмена</button>
-                <button onclick="saveEditedMessage()" style="flex:1; padding:12px; background:var(--accent); border:none; border-radius:10px; color:white; cursor:pointer; font-weight:600;">Сохранить</button>
+            <div style="display:flex; gap:10px; flex-direction: column;">
+                <button class="action-btn btn-primary" onclick="saveEditedMessage()">Сохранить</button>
+                <button class="action-btn btn-secondary" onclick="closeModal('edit-message-modal')">Отмена</button>
             </div>
         </div>
     </div>
@@ -442,7 +452,7 @@
             <h2>Поиск по чату</h2>
             <input type="text" id="searchMsgInput" placeholder="Введите текст..." oninput="doSearchMessages()">
             <div id="searchMsgResults" style="text-align:left; max-height:200px; overflow-y:auto; margin-bottom:20px;"></div>
-            <button onclick="closeModal('search-messages-modal')" style="padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; width:100%; font-weight:600;">Закрыть</button>
+            <button class="action-btn btn-secondary" onclick="closeModal('search-messages-modal')" style="width:100%;">Закрыть</button>
         </div>
     </div>
 
@@ -488,11 +498,10 @@
                 <div class="wallpaper-item" data-wp="linear-gradient(135deg, #667eea, #764ba2)" style="background:linear-gradient(135deg, #667eea, #764ba2)" onclick="changeWallpaper('linear-gradient(135deg, #667eea, #764ba2)', this)"></div>
                 <div class="wallpaper-item" data-wp="linear-gradient(135deg, #f093fb, #f5576c)" style="background:linear-gradient(135deg, #f093fb, #f5576c)" onclick="changeWallpaper('linear-gradient(135deg, #f093fb, #f5576c)', this)"></div>
             </div>
-            <button onclick="document.getElementById('wallpaperInput').click()" style="width:100%; margin-top:10px; padding:12px; background:var(--chat-bg); border:1px dashed var(--accent); border-radius:10px; color:var(--accent); cursor:pointer; font-weight:600;">Загрузить обои</button>
+            <button onclick="document.getElementById('wallpaperInput').click()" class="action-btn btn-secondary" style="width:100%; margin-top:10px;">Загрузить обои</button>
             <input type="file" id="wallpaperInput" accept="image/*" style="display:none;" onchange="uploadWallpaper(event)">
 
-            <button onclick="openLogoutModal()" style="width:100%; margin-top:20px; padding:12px; background:rgba(239, 68, 68, 0.1); border:1px solid var(--danger); border-radius:10px; color:var(--danger); cursor:pointer; font-weight:600;">Выйти</button>
-            <button onclick="closeModal('settings-modal')" style="width:100%; margin-top:10px; padding:12px; background:var(--accent); border:none; border-radius:10px; color:white; cursor:pointer; font-weight:600;">Закрыть</button>
+            <button class="action-btn btn-primary" onclick="closeModal('settings-modal')" style="width:100%; margin-top:20px;">Закрыть</button>
         </div>
     </div>
 
@@ -500,9 +509,9 @@
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2 style="color:var(--danger);">Выход</h2>
             <p style="color:var(--text-main); margin-bottom:20px; font-size:15px;">Вы уверены?</p>
-            <div style="display:flex; gap:10px;">
-                <button onclick="closeModal('logout-modal')" style="flex:1; padding:12px; background:var(--chat-bg); border:none; border-radius:10px; color:var(--text-main); cursor:pointer; font-weight:600;">Отмена</button>
-                <button onclick="confirmLogout()" style="flex:1; padding:12px; background:var(--danger); border:none; border-radius:10px; color:white; cursor:pointer; font-weight:600;">Выйти</button>
+            <div style="display:flex; gap:10px; flex-direction: column;">
+                <button class="action-btn btn-primary" onclick="openLogoutModal()" style="background:#ef4444;">Выйти</button>
+                <button class="action-btn btn-secondary" onclick="closeModal('logout-modal')">Отмена</button>
             </div>
         </div>
     </div>
@@ -872,17 +881,17 @@
             if (tab === 'friend') {
                 document.getElementById('add-friend-pane').style.display = 'block';
                 document.getElementById('add-group-pane').style.display = 'none';
-                document.getElementById('tab-friend').style.background = 'var(--accent)';
-                document.getElementById('tab-friend').style.color = 'white';
-                document.getElementById('tab-group').style.background = 'var(--chat-bg)';
-                document.getElementById('tab-group').style.color = 'var(--text-main)';
+                document.getElementById('tab-friend').classList.add('btn-primary');
+                document.getElementById('tab-friend').classList.remove('btn-secondary');
+                document.getElementById('tab-group').classList.add('btn-secondary');
+                document.getElementById('tab-group').classList.remove('btn-primary');
             } else {
                 document.getElementById('add-friend-pane').style.display = 'none';
                 document.getElementById('add-group-pane').style.display = 'block';
-                document.getElementById('tab-group').style.background = 'var(--accent)';
-                document.getElementById('tab-group').style.color = 'white';
-                document.getElementById('tab-friend').style.background = 'var(--chat-bg)';
-                document.getElementById('tab-friend').style.color = 'var(--text-main)';
+                document.getElementById('tab-group').classList.add('btn-primary');
+                document.getElementById('tab-group').classList.remove('btn-secondary');
+                document.getElementById('tab-friend').classList.add('btn-secondary');
+                document.getElementById('tab-friend').classList.remove('btn-primary');
             }
         };
 
@@ -1066,7 +1075,6 @@
             const container = document.getElementById('messagesContainer');
             container.innerHTML = '';
             
-            // Серверный timestamp для сортировки
             const msgs = Object.keys(msgsObj).map(key => ({ key, ...msgsObj[key] })).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             let lastDate = '';
 
@@ -1419,7 +1427,7 @@
             const myData = usersDB[userID] || {};
             if (queryID === myData.voxId) return resultEl.innerText = 'Это ваш ID!';
 
-            if (queryID === 'VOX-BOT') return resultEl.innerHTML = `Найден: <b>Vox Бот</b><br><button onclick="addFriendToChat('VOX-BOT')" style="margin-top:10px; padding:8px 15px; background:#10b981; border:none; border-radius:8px; color:white; cursor:pointer; font-weight:bold;">Написать</button>`;
+            if (queryID === 'VOX-BOT') return resultEl.innerHTML = `Найден: <b>Vox Бот</b><br><button class="action-btn btn-primary" onclick="addFriendToChat('VOX-BOT')" style="margin-top:10px; padding:8px 15px;">Написать</button>`;
 
             let foundUid = null;
             for (const [uid, data] of Object.entries(usersDB)) {
@@ -1431,7 +1439,7 @@
 
             if (foundUid) {
                 const friendName = usersDB[foundUid].name;
-                resultEl.innerHTML = `Найден: <b>${friendName}</b><br><button onclick="addFriendToChat('${foundUid}')" style="margin-top:10px; padding:8px 15px; background:#10b981; border:none; border-radius:8px; color:white; cursor:pointer; font-weight:bold;">Написать</button>`;
+                resultEl.innerHTML = `Найден: <b>${friendName}</b><br><button class="action-btn btn-primary" onclick="addFriendToChat('${foundUid}')" style="margin-top:10px; padding:8px 15px;">Написать</button>`;
             } else {
                 resultEl.innerText = 'Пользователь не найден.';
                 resultEl.style.color = 'var(--danger)';
@@ -1439,7 +1447,6 @@
         };
 
         window.addFriendToChat = async function(friendID) {
-            // ФИКС: Добавляем чат обоим пользователям
             await set(ref(db, `user_chats/${userID}/${friendID}`), true);
             await set(ref(db, `user_chats/${friendID}/${userID}`), true);
             
