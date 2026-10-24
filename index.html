@@ -188,6 +188,9 @@
         .message.sticker .msg-bubble { background: transparent; padding: 0; }
         .message.sticker img { width: 120px; height: 120px; object-fit: contain; }
 
+        .message.image .msg-bubble { background: transparent; padding: 0; }
+        .message.image img { max-width: 250px; border-radius: 12px; }
+
         .voice-player { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 12px; }
         .voice-player button { background: var(--accent); border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; color: #fff;}
         .voice-wave { height: 20px; flex: 1; background: repeating-linear-gradient(90deg, var(--accent), var(--accent) 2px, transparent 2px, transparent 4px); opacity: 0.5; }
@@ -203,7 +206,7 @@
         .back-btn { display: none; background: none; border: none; color: var(--accent); font-size: 24px; cursor: pointer; margin-right: 10px;}
 
         .sticker-panel, .emoji-panel { display: none; position: absolute; bottom: 80px; left: 20px; right: 20px; background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 10px; z-index: 10; }
-        .sticker-panel.active { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; height: 200px; overflow-y: auto;}
+        .sticker-panel.active { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; height: 250px; overflow-y: auto;}
         .sticker-panel img { width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
         .emoji-panel.active { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
         .emoji-panel span { font-size: 20px; cursor: pointer; text-align: center; padding: 5px; }
@@ -289,8 +292,8 @@
     <!-- МОДАЛКА ДОБАВЛЕНИЯ ДРУГА -->
     <div id="add-friend-modal" onclick="closeAddFriend()">
         <div class="modal-card" onclick="event.stopPropagation()">
-            <h2 style="margin-bottom:20px;">Найти друга</h2>
-            <input type="text" id="friendSearchInput" placeholder="Введите никнейм">
+            <h2 style="margin-bottom:20px;">Найти друга по ID</h2>
+            <input type="text" id="friendSearchInput" placeholder="Введите ID друга (например, VOX-1234)">
             <div id="searchResult" style="margin-bottom:20px; color: var(--accent);"></div>
             <button onclick="searchFriend()" style="padding:10px 20px; background:var(--accent); border:none; border-radius:8px; color:white; cursor:pointer; margin-bottom:10px;">Найти</button>
             <button onclick="closeAddFriend()" style="padding:10px 20px; background:var(--chat-bg); border:none; border-radius:8px; color:var(--text-main); cursor:pointer;">Закрыть</button>
@@ -393,12 +396,22 @@
             </div>
             
             <div class="sticker-panel" id="stickerPanel">
+                <!-- Много стикеров -->
                 <img src="https://em-content.zobj.net/source/apple/391/grinning-face_1f600.png" onclick="sendSticker(this.src)">
                 <img src="https://em-content.zobj.net/source/apple/391/face-with-tears-of-joy_1f602.png" onclick="sendSticker(this.src)">
                 <img src="https://em-content.zobj.net/source/apple/391/red-heart_2764-fe0f.png" onclick="sendSticker(this.src)">
                 <img src="https://em-content.zobj.net/source/apple/391/thumbs-up_1f44d.png" onclick="sendSticker(this.src)">
                 <img src="https://em-content.zobj.net/source/apple/391/fire_1f525.png" onclick="sendSticker(this.src)">
                 <img src="https://em-content.zobj.net/source/apple/391/video-game_1f3ae.png" onclick="sendSticker(this.src)">
+                <img src="https://em-content.zobj.net/source/apple/391/smiling-face-with-sunglasses_1f60e.png" onclick="sendSticker(this.src)">
+                <img src="https://em-content.zobj.net/source/apple/391/rocket_1f680.png" onclick="sendSticker(this.src)">
+                <img src="https://em-content.zobj.net/source/apple/391/alien_1f47d.png" onclick="sendSticker(this.src)">
+                <img src="https://em-content.zobj.net/source/apple/391/ghost_1f47b.png" onclick="sendSticker(this.src)">
+                <img src="https://em-content.zobj.net/source/apple/391/skull_1f480.png" onclick="sendSticker(this.src)">
+                <img src="https://em-content.zobj.net/source/apple/391/pile-of-poo_1f4a9.png" onclick="sendSticker(this.src)">
+                <img src="https://em-content.zobj.net/source/apple/391/cat-face_1f431.png" onclick="sendSticker(this.src)">
+                <img src="https://em-content.zobj.net/source/apple/391/dog-face_1f436.png" onclick="sendSticker(this.src)">
+                <img src="https://em-content.zobj.net/source/apple/391/money-bag_1f4b0.png" onclick="sendSticker(this.src)">
             </div>
 
             <div class="emoji-panel" id="emojiPanel">
@@ -412,12 +425,16 @@
 
             <div class="input-area">
                 <button class="icon-btn" onclick="toggleStickers()">🖼️</button> 
+                <button class="icon-btn" onclick="openImagePicker()">📷</button> <!-- ИСПРАВЛЕНО: кнопка фото -->
                 <button class="icon-btn" onclick="startVoiceRecord()" id="voiceBtn">🎙️</button>
                 <input type="text" id="msgInput" placeholder="Сообщение..." onkeypress="handleKeyPress(event)">
                 <button class="send-btn" id="sendBtn" onclick="sendMessage()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
             </div>
         </div>
     </div>
+
+    <!-- Скрытый инпут для отправки фото -->
+    <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="sendImage(event)">
 
     <script>
         // --- РЕГИСТРАЦИЯ SW ---
@@ -427,7 +444,7 @@
             });
         }
 
-        // --- БАЗА ПОЛЬЗОВАТЕЛЕЙ (Для проверки уникальности) ---
+        // --- БАЗА ПОЛЬЗОВАТЕЛЕЙ ---
         let usersDB = JSON.parse(localStorage.getItem('voxUsersDB')) || {};
 
         // --- ДАННЫЕ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ ---
@@ -492,7 +509,6 @@
 
             currentUser = name;
             
-            // Генерация ID только при успешном входе, если его еще нет
             if (!userID) {
                 userID = generateID();
                 localStorage.setItem('voxID', userID);
@@ -594,7 +610,7 @@
             closeEditProfile();
         }
 
-        // --- ДОБАВЛЕНИЕ ДРУЗЕЙ ---
+        // --- ДОБАВЛЕНИЕ ДРУЗЕЙ (ПО ID) ---
         function openAddFriend() {
             document.getElementById('friendSearchInput').value = '';
             document.getElementById('searchResult').innerText = '';
@@ -612,15 +628,18 @@
             if (!query) return;
             
             let foundName = null;
+            // ИСПРАВЛЕНО: поиск не зависит от регистра
             Object.keys(usersDB).forEach(key => {
-                if (key.toLowerCase() === query && key !== currentUser) foundName = key;
+                if (usersDB[key].id.toLowerCase() === query && key !== currentUser) {
+                    foundName = key;
+                }
             });
 
             if (foundName) {
-                resultEl.innerHTML = `Пользователь найден: <b>${foundName}</b><br><button onclick="addChat('${foundName}')" style="margin-top:10px; padding:5px 15px; background:#10b981; border:none; border-radius:5px; color:white; cursor:pointer;">Написать</button>`;
+                resultEl.innerHTML = `Пользователь найден: <b>${foundName}</b> (ID: ${query.toUpperCase()})<br><button onclick="addChat('${foundName}')" style="margin-top:10px; padding:5px 15px; background:#10b981; border:none; border-radius:5px; color:white; cursor:pointer;">Написать</button>`;
                 resultEl.style.color = '#10b981';
             } else {
-                resultEl.innerText = 'Пользователь не найден.';
+                resultEl.innerText = 'Пользователь с таким ID не найден.';
                 resultEl.style.color = '#ef4444';
             }
         }
@@ -649,7 +668,11 @@
 
             Object.keys(chatData).forEach(name => {
                 const messages = chatData[name];
-                const lastMsg = messages.length > 0 ? messages[messages.length - 1].text : 'Нет сообщений';
+                let lastMsg = 'Нет сообщений';
+                if (messages.length > 0) {
+                    const last = messages[messages.length - 1];
+                    lastMsg = last.type === 'image' ? '[Фото]' : (last.type === 'sticker' ? '[Стикер]' : last.text);
+                }
                 const shortLastMsg = lastMsg.length > 20 ? lastMsg.substring(0, 20) + '...' : lastMsg;
                 const avatarLetter = name[0].toUpperCase();
                 
@@ -659,7 +682,7 @@
 
                 if (friendAvatar) {
                     avatarHTML = `<img src="${friendAvatar}" style="display:block">`;
-                    letterHTML = ''; // ИСПРАВЛЕНО: скрываем букву, если есть аватарка
+                    letterHTML = '';
                 }
 
                 const div = document.createElement('div');
@@ -749,6 +772,8 @@
                 } else if (msg.type === 'voice') {
                     msgDiv.innerHTML = `<div class="msg-bubble"><div class="voice-player"><button onclick="playVoice(this)">▶</button><div class="voice-wave"></div></div></div><div class="msg-time">${msg.time}</div>`;
                     msgDiv.querySelector('button').dataset.src = msg.text;
+                } else if (msg.type === 'image') {
+                    msgDiv.innerHTML = `<div class="msg-bubble"><img src="${msg.text}" style="max-width: 200px; border-radius: 12px;"></div><div class="msg-time">${msg.time}</div>`;
                 } else {
                     let replyHTML = msg.reply ? `<div class="reply-quote">${msg.reply}</div>` : '';
                     let reactionHTML = msg.reaction ? `<div class="reaction">${msg.reaction}</div>` : '';
@@ -875,13 +900,36 @@
             document.getElementById('stickerPanel').classList.remove('active');
         }
 
+        // --- ОТПРАВКА ФОТО ---
+        function openImagePicker() {
+            document.getElementById('imageInput').click();
+        }
+
+        function sendImage(event) {
+            const file = event.target.files[0];
+            if (!file || !currentChat) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                chatData[currentChat].push({ text: e.target.result, type: 'image', direction: 'outgoing', time: time });
+                localStorage.setItem('voxChats', JSON.stringify(chatData));
+                renderMessages();
+                renderChatList();
+            };
+            reader.readAsDataURL(file);
+            event.target.value = ''; // Очистка инпута
+            
+            // ИСПРАВЛЕНО: Скрываем клавиатуру на мобилке
+            document.getElementById('msgInput').blur();
+        }
+
         function addEmoji(emoji) {
             const input = document.getElementById('msgInput');
             input.value += emoji;
             input.focus();
         }
 
-        // ИСПРАВЛЕНО: плавная прокрутка при фокусе на поле ввода (для мобилок)
         document.getElementById('msgInput').addEventListener('focus', () => {
             setTimeout(() => {
                 const messages = document.getElementById('messagesContainer');
