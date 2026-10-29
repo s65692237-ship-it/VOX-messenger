@@ -258,7 +258,7 @@
         .panel { position: absolute; bottom: 70px; left: 15px; right: 15px; background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 10px; z-index: 10; display: none; box-shadow: 0 -5px 20px rgba(0,0,0,0.3); backdrop-filter: var(--glass-effect); transition: background-color 0.5s;}
         .panel.active { display: grid; }
         
-        /* Стикеры (пока временные эмодзи) */
+        /* Стикеры */
         #stickerPanel { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; height: 200px; overflow-y: auto;}
         #stickerPanel img { width: 100%; height: 100%; object-fit: contain; cursor: pointer; transition: 0.2s; padding: 5px;}
         #stickerPanel img:hover { transform: scale(1.1); background: rgba(139, 92, 246, 0.2); border-radius: 8px;}
@@ -585,7 +585,7 @@
             </div>
            
             <div class="panel" id="stickerPanel">
-                <!-- ВРЕМЕННЫЕ СТИКЕРЫ. Когда сделаешь свои, замени ссылки на stickers/cat_rose.png и т.д. -->
+                <!-- ВРЕМЕННЫЕ СТИКЕРЫ -->
                 <img src="https://em-content.zobj.net/source/apple/391/grinning-face_1f600.png" onclick="sendSticker(this.src)" alt="sticker1">
                 <img src="https://em-content.zobj.net/source/apple/391/face-with-tears-of-joy_1f602.png" onclick="sendSticker(this.src)" alt="sticker2">
                 <img src="https://em-content.zobj.net/source/apple/391/red-heart_2764-fe0f.png" onclick="sendSticker(this.src)" alt="sticker3">
@@ -1501,7 +1501,6 @@
             if (!currentChatID) return alert('Выберите чат!');
            
             try {
-                // Проверка поддержки API
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                     return alert('Ваш браузер не поддерживает запись голоса. Используйте HTTPS или современный браузер.');
                 }
@@ -1642,27 +1641,33 @@
             document.getElementById('editNameInput').value = currentUser;
             const myData = usersDB[userID] || {};
             document.getElementById('editStatusInput').value = myData.status || '';
-            tempAvatarBase64 = null; // Сбрасываем временное фото
+            tempAvatarBase64 = null; // Сбрасываем временную аватарку при открытии
             document.getElementById('edit-profile-modal').classList.add('active');
         };
 
+        // ИСПРАВЛЕННЫЙ БАГ С СОХРАНЕНИЕМ НИКА
         window.saveProfile = async function() {
             const newName = document.getElementById('editNameInput').value.trim();
             const newStatus = document.getElementById('editStatusInput').value.trim();
             if (newName.length < 2) return alert('Слишком коротко!');
            
             const currentUserData = usersDB[userID] || {};
+            // Если новая аватарка НЕ загружена, берем старую из базы
             const finalAvatar = tempAvatarBase64 !== null ? tempAvatarBase64 : currentUserData.avatar;
 
-            await update(ref(db, 'users/' + userID), {
-                name: newName,
-                status: newStatus,
-                avatar: finalAvatar
-            });
-           
-            updateProfileUI();
-            closeModal('edit-profile-modal');
-            showNotification('Профиль', 'Сохранено!');
+            try {
+                await update(ref(db, 'users/' + userID), {
+                    name: newName,
+                    status: newStatus,
+                    avatar: finalAvatar
+                });
+               
+                updateProfileUI();
+                closeModal('edit-profile-modal');
+                showNotification('Профиль', 'Сохранено!');
+            } catch (e) {
+                alert('Ошибка сохранения: ' + e.message);
+            }
         };
 
         window.openLogoutModal = function() { document.getElementById('logout-modal').classList.add('active'); };
