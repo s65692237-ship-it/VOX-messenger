@@ -9,7 +9,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        @import
+        .input-area { padding: 8px 12px; border-top: 1px solid var(--border-color); background: var(--sidebar-bg); padding-bottom: max(8px, env(safe-area-inset-bottom)); position: relative; transition: background-color 0.5s; backdrop-filter: var(--glass-effect); z-index: 10;}
+.input-row { display: flex; gap: 8px; align-items: flex-end; }
+.icon-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); transition: 0.2s; width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; flex-shrink: 0; margin-bottom: 2px;}
+.icon-btn:hover { color: var(--accent); }
+.icon-btn svg { stroke-width: 2; }
+.input-row input { flex: 1; padding: 12px 15px; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 20px; color: var(--text-main); outline: none; transition: 0.2s, background-color 0.5s; font-size: 16px; min-width: 50px; max-height: 120px; overflow-y: auto;}
+.input-row input:focus { border-color: var(--accent); }
+.send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s, background-color 0.5s; flex-shrink: 0; margin-bottom: 0px;}
+.send-btn:hover { background: var(--accent-hover); }url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
        
         :root {
             --bg-color: #0f172a;
