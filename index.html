@@ -225,12 +225,17 @@
         .checkmark { color: #60a5fa; font-size: 12px;}
         .checkmark.read { color: #8b5cf6; }
 
-        .input-area { padding: 10px 15px; border-top: 1px solid var(--border-color); display: flex; gap: 5px; background: var(--sidebar-bg); align-items: center; padding-bottom: max(10px, env(safe-area-inset-bottom)); position: relative; transition: background-color 0.5s; backdrop-filter: var(--glass-effect); z-index: 10; overflow-x: auto; -webkit-overflow-scrolling: touch;}
+        /* НОВЫЙ ДИЗАЙН ВВОДА ТЕКСТА КАК В ТГ */
+        .input-area { padding: 10px 15px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; background: var(--sidebar-bg); align-items: center; padding-bottom: max(10px, env(safe-area-inset-bottom)); position: relative; transition: background-color 0.5s; backdrop-filter: var(--glass-effect); z-index: 10;}
         .icon-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); transition: 0.2s; width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; flex-shrink: 0;}
         .icon-btn:hover { color: var(--accent); background: var(--chat-bg);}
-        .input-area input { flex: 1; padding: 12px 15px; background: var(--chat-bg); border: 1px solid var(--border-color); border-radius: 20px; color: var(--text-main); outline: none; transition: 0.2s, background-color 0.5s; font-size: 16px; min-width: 80px;}
-        .input-area input:focus { border-color: var(--accent); }
-        .send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s, background-color 0.5s; flex-shrink: 0;}
+        
+        /* Круглое поле ввода */
+        .input-area input { flex: 1; padding: 12px 20px; background: var(--chat-bg); border: none; border-radius: 25px; color: var(--text-main); outline: none; transition: 0.2s, background-color 0.5s; font-size: 16px; min-width: 80px;}
+        .input-area input:focus { background: var(--msg-in); }
+        
+        /* Круглая кнопка микрофона/отправки */
+        .send-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s, background-color 0.5s; flex-shrink: 0; box-shadow: 0 4px 10px rgba(139, 92, 246, 0.4);}
         .send-btn:hover { background: var(--accent-hover); }
 
         .panel { position: absolute; bottom: 70px; left: 15px; right: 15px; background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 10px; z-index: 10; display: none; box-shadow: 0 -5px 20px rgba(0,0,0,0.3); backdrop-filter: var(--glass-effect); transition: background-color 0.5s;}
@@ -312,10 +317,10 @@
             .chat-header { padding-top: max(10px, env(safe-area-inset-top)); }
             .modal-card { max-width: 100%; padding: 20px; }
             .settings-opt { flex: 1; text-align: center; }
-            .input-area { gap: 3px; padding: 8px 10px; }
+            .input-area { gap: 6px; padding: 8px 10px; }
             .icon-btn { width: 32px; height: 32px; font-size: 18px; }
-            .send-btn { width: 36px; height: 36px; }
-            .input-area input { padding: 10px 12px; font-size: 14px; }
+            .send-btn { width: 40px; height: 40px; }
+            .input-area input { padding: 10px 15px; font-size: 15px; }
         }
 
         .chat-action-menu { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 6000; display: none; justify-content: center; align-items: flex-end; padding-bottom: 20px; backdrop-filter: blur(3px); }
@@ -618,14 +623,15 @@
                 <span onclick="addEmoji('🤖')">🤖</span>
             </div>
 
+            <!-- НОВЫЙ БЛОК ВВОДА (как в тг) -->
             <div class="input-area">
-                <button class="icon-btn" onclick="togglePanel('stickerPanel')" title="Стикеры">🖼️</button>
+                <button class="icon-btn" onclick="togglePanel('stickerPanel')" title="Стикеры" style="display:none;">🖼️</button>
                 <button class="icon-btn" onclick="togglePanel('emojiPanel')" title="Эмодзи">😀</button>
                 <button class="icon-btn" onclick="openImagePicker()" title="Фото">📷</button>
                 <button class="icon-btn" onclick="document.getElementById('docInput').click()" title="Документ">📎</button>
+                <input type="text" id="msgInput" placeholder="Сообщение" onkeypress="handleKeyPress(event)" oninput="handleTyping()">
                 <button class="icon-btn" onclick="startVoiceRecord()" id="voiceBtn" title="Голосовое">🎙️</button>
-                <input type="text" id="msgInput" placeholder="Сообщение..." onkeypress="handleKeyPress(event)" oninput="handleTyping()">
-                <button class="send-btn" id="sendBtn" onclick="sendMessage()"><svg viewBox="0 0 24 24"><path fill="white" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="white" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
             </div>
         </div>
     </div>
@@ -1552,12 +1558,16 @@
 
             const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-            // СТРАХОВКА ДЛЯ КАНАЛОВ
-            if (isGroup) {
+            // СТРАХОВКА: Для бота и избранного пишем без проверки участников
+            if (!isGroup && currentChatID !== 'VOX-BOT' && currentChatID !== 'FAVORITES') {
                 try {
-                    await set(ref(db, 'chats/' + chatID + '/members/' + userID), true);
-                    await set(ref(db, 'chats/' + chatID + '/members/' + currentChatID), true);
-                } catch(e) { console.log("Ошибка записи участника", e); }
+                    const memberRef = ref(db, 'chats/' + chatID + '/members/' + userID);
+                    const memberSnap = await get(memberRef);
+                    if (!memberSnap.exists()) {
+                        await set(memberRef, true);
+                        await set(ref(db, 'chats/' + chatID + '/members/' + currentChatID), true);
+                    }
+                } catch(e) { console.log("Ошибка проверки", e); }
             }
 
             const msgData = {
@@ -1625,7 +1635,6 @@
             const myData = usersDB[userID] || {};
             if (queryID === myData.voxId) return resultEl.innerText = 'Это ваш ID!';
 
-            // Поиск бота по слову БОТ
             if (queryID === 'VOX-BOT' || queryID === 'БОТ' || queryID === 'VOX БОТ' || queryID === 'VOX-БОТ') {
                 return resultEl.innerHTML = `Найден: <b>Vox Бот</b><br><button class="action-btn btn-primary" onclick="addFriendToChat('VOX-BOT')" style="margin-top:10px; padding:8px 15px;">Написать</button>`;
             }
