@@ -9,78 +9,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        @import
-        /* НОВАЯ ПАНЕЛЬ ВВОДА */
-.input-area { 
-    padding: 8px 12px; 
-    border-top: 1px solid var(--border-color); 
-    background: var(--sidebar-bg); 
-    padding-bottom: max(8px, env(safe-area-inset-bottom)); 
-    position: relative; 
-    transition: background-color 0.5s; 
-    backdrop-filter: var(--glass-effect); 
-    z-index: 10;
-}
-.input-row { 
-    display: flex; 
-    gap: 8px; 
-    align-items: flex-end; 
-}
-.icon-btn { 
-    background: none; 
-    border: none; 
-    cursor: pointer; 
-    color: var(--text-muted); 
-    transition: 0.2s; 
-    width: 36px; 
-    height: 36px; 
-    border-radius: 50%; 
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    flex-shrink: 0; 
-    margin-bottom: 2px;
-}
-.icon-btn:hover { 
-    color: var(--accent); 
-}
-.icon-btn svg { 
-    stroke-width: 2; 
-}
-.input-row input { 
-    flex: 1; 
-    padding: 12px 15px; 
-    background: var(--chat-bg); 
-    border: 1px solid var(--border-color); 
-    border-radius: 20px; 
-    color: var(--text-main); 
-    outline: none; 
-    transition: 0.2s, background-color 0.5s; 
-    font-size: 16px; 
-    min-width: 50px; 
-    max-height: 120px; 
-    overflow-y: auto;
-}
-.input-row input:focus { 
-    border-color: var(--accent); 
-}
-.send-btn { 
-    width: 40px; 
-    height: 40px; 
-    border-radius: 50%; 
-    background: var(--accent); 
-    border: none; 
-    cursor: pointer; 
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    transition: 0.2s, background-color 0.5s; 
-    flex-shrink: 0; 
-    margin-bottom: 0px;
-}
-.send-btn:hover { 
-    background: var(--accent-hover); 
-}
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+       
         :root {
             --bg-color: #0f172a;
             --bg-gradient: radial-gradient(circle at top right, #1e1b4b, #0f172a 50%);
@@ -294,7 +224,6 @@
         .checkmark { color: #60a5fa; font-size: 12px;}
         .checkmark.read { color: #8b5cf6; }
 
-        /* ИСПРАВЛЕННАЯ ПАНЕЛЬ ВВОДА */
         .input-area { padding: 10px 15px; border-top: 1px solid var(--border-color); display: flex; gap: 5px; background: var(--sidebar-bg); align-items: center; padding-bottom: max(10px, env(safe-area-inset-bottom)); position: relative; transition: background-color 0.5s; backdrop-filter: var(--glass-effect); z-index: 10; overflow-x: auto; -webkit-overflow-scrolling: touch;}
         .icon-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); transition: 0.2s; width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; flex-shrink: 0;}
         .icon-btn:hover { color: var(--accent); background: var(--chat-bg);}
@@ -305,11 +234,11 @@
 
         .panel { position: absolute; bottom: 70px; left: 15px; right: 15px; background: var(--sidebar-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 10px; z-index: 10; display: none; box-shadow: 0 -5px 20px rgba(0,0,0,0.3); backdrop-filter: var(--glass-effect); transition: background-color 0.5s;}
         .panel.active { display: grid; }
-        
+       
         #stickerPanel { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; height: 200px; overflow-y: auto;}
         #stickerPanel img { width: 100%; height: 100%; object-fit: contain; cursor: pointer; transition: 0.2s; padding: 5px;}
         #stickerPanel img:hover { transform: scale(1.1); background: rgba(139, 92, 246, 0.2); border-radius: 8px;}
-        
+       
         #emojiPanel { grid-template-columns: repeat(6, 1fr); gap: 5px; max-height: 200px; overflow-y: auto;}
         #emojiPanel span { font-size: 24px; cursor: pointer; text-align: center; padding: 5px; border-radius: 8px; transition: 0.1s;}
         #emojiPanel span:hover { background: rgba(139, 92, 246, 0.2);}
@@ -687,7 +616,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getDatabase, ref, push, onValue, set, get, child, update, remove, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCfoqJjADzqTjt6Fm5TscvJexQVlZeHloQ",
@@ -748,6 +677,10 @@
             if (!email || !password) return alert('Заполните Email и пароль!');
             if (password.length < 6) return alert('Пароль должен быть минимум 6 символов!');
 
+            // ДОБАВЛЯЕМ: проверка формата email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) return alert('Некорректный формат Email!');
+
             try {
                 if (isRegisterMode) {
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -760,7 +693,11 @@
                         avatar: tempAvatarBase64 || "",
                         status: 'В сети Vox'
                     });
-                    showNotification('Успех', 'Аккаунт создан!');
+                    
+                    // ДОБАВЛЯЕМ: верификация почты
+                    await sendEmailVerification(userCredential.user);
+                    isRegisterMode = false;
+                    showNotification('Успех', 'Аккаунт создан! Проверьте почту.');
                 } else {
                     await signInWithEmailAndPassword(auth, email, password);
                 }
@@ -769,9 +706,14 @@
             }
         };
 
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 userID = user.uid;
+                // ДОБАВЛЯЕМ: проверяем профиль
+                const profileSnap = await get(ref(db, 'users/' + userID));
+                if (!profileSnap.exists()) {
+                    return; // ждём, пока профиль создастся
+                }
                 document.getElementById('auth-screen').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'flex';
                 initApp();
@@ -843,6 +785,17 @@
                     }
                 }
             });
+
+            // ДОБАВЛЯЕМ: миграция старых чатов (запись members)
+            const chatsSnap = await get(ref(db, 'chats'));
+            if (!chatsSnap.exists()) {
+                for (const friendID of Object.keys(chatData)) {
+                    if (friendID === 'VOX-BOT') continue;
+                    const chatID = [userID, friendID].sort().join('_');
+                    await set(ref(db, 'chats/' + chatID + '/members/' + userID), true);
+                    await set(ref(db, 'chats/' + chatID + '/members/' + friendID), true);
+                }
+            }
 
             const botCheck = await get(ref(db, 'user_chats/' + userID + '/VOX-BOT'));
             if (!botCheck.exists()) {
@@ -959,7 +912,6 @@
                     }
                 });
 
-                // Контекстное меню для закрепления/архивации
                 let pressTimer;
                 div.addEventListener('touchstart', (e) => {
                     pressTimer = setTimeout(() => {
@@ -995,7 +947,7 @@
             }
 
             chatsToRender.forEach(id => container.appendChild(createChatElement(id)));
-            
+           
             if (archivedToRender.length > 0) {
                 const archiveHeader = document.createElement('div');
                 archiveHeader.style.cssText = 'padding:10px; font-size:12px; color:var(--text-muted); text-align:center; cursor:pointer;';
@@ -1036,10 +988,14 @@
                 name: name,
                 type: type,
                 creator: userID,
+                subscribers_count: 1, // ДОБАВЛЯЕМ
                 members: { [userID]: true }
             });
 
             await set(ref(db, `user_chats/${userID}/${groupId}`), true);
+            
+            // ДОБАВЛЯЕМ: создатель в участники чата
+            await set(ref(db, 'chats/' + groupId + '/members/' + userID), true);
            
             closeModal('add-friend-modal');
             openChat(groupId, name, true);
@@ -1064,6 +1020,8 @@
                 div.onclick = async () => {
                     await update(ref(db, `groups/${currentChatID}/members`), { [uid]: true });
                     await set(ref(db, `user_chats/${uid}/${currentChatID}`), true);
+                    // ДОБАВЛЯЕМ: новый участник в chats
+                    await set(ref(db, 'chats/' + currentChatID + '/members/' + uid), true);
                     showNotification('Группа', 'Участник добавлен!');
                 };
                 container.appendChild(div);
@@ -1138,7 +1096,6 @@
                 }
             });
 
-            // ИНДИВИДУАЛЬНЫЕ ОБОИ
             const savedWallpaper = localStorage.getItem('voxWallpaper_' + chatID);
             if (savedWallpaper) {
                 document.getElementById('chatArea').style.backgroundImage = savedWallpaper;
@@ -1172,7 +1129,6 @@
            
             unsubscribeMessages = onValue(messagesRef, (snapshot) => {
                 const msgs = snapshot.val() || {};
-                // ОТМЕТКА ПРОЧИТАНО
                 if (Object.keys(msgs).length > lastReadMessageCount && !isGroup && friendID !== 'VOX-BOT') {
                     set(ref(db, 'read_status/' + chatID + '/' + friendID), true);
                 }
@@ -1308,7 +1264,6 @@
                     update(ref(db, `messages/${chatID}/${msg.key}`), { reaction: '❤️' });
                 };
 
-                // Секретный чат (самоуничтожение через 10 секунд)
                 if (isSecretMode && !isMine) {
                     setTimeout(() => {
                         const chatID = [userID, currentChatID].sort().join('_');
@@ -1604,6 +1559,11 @@
         window.addFriendToChat = async function(friendID) {
             await set(ref(db, `user_chats/${userID}/${friendID}`), true);
             await set(ref(db, `user_chats/${friendID}/${userID}`), true);
+            
+            // ДОБАВЛЯЕМ: запись участников
+            const chatID = [userID, friendID].sort().join('_');
+            await set(ref(db, 'chats/' + chatID + '/members/' + userID), true);
+            await set(ref(db, 'chats/' + chatID + '/members/' + friendID), true);
            
             closeModal('add-friend-modal');
             const friendName = friendID === 'VOX-BOT' ? 'Vox Бот' : (usersDB[friendID]?.name || 'Друг');
@@ -1631,7 +1591,6 @@
             event.target.value = '';
         };
 
-        // ОТПРАВКА ДОКУМЕНТОВ
         window.sendDocument = function(event) {
             const file = event.target.files[0];
             if (!file || !currentChatID) return;
@@ -1658,7 +1617,7 @@
         window.startVoiceRecord = async function() {
             if (isRecording) { stopVoiceRecord(); return; }
             if (!currentChatID) return alert('Выберите чат!');
-            if (isRequestingMic) return; // Защита от двойного клика
+            if (isRequestingMic) return;
 
             isRequestingMic = true;
             const btn = document.getElementById('voiceBtn');
@@ -1772,7 +1731,7 @@
             document.body.style.fontSize = size;
             localStorage.setItem('voxFontSize', size);
         };
-        
+       
         window.uploadWallpaper = function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -1832,14 +1791,12 @@
             document.getElementById('edit-profile-modal').classList.add('active');
         };
 
-        // ИСПРАВЛЕННЫЙ БАГ С СОХРАНЕНИЕМ НИКА И АВАТАРКИ
         window.saveProfile = async function() {
             const newName = document.getElementById('editNameInput').value.trim();
             const newStatus = document.getElementById('editStatusInput').value.trim();
             if (newName.length < 2) return alert('Слишком коротко!');
            
             const currentUserData = usersDB[userID] || {};
-            // Если новая аватарка НЕ загружена, берем старую из базы, если и ее нет - пустую строку
             let finalAvatar = currentUserData.avatar || "";
             if (tempAvatarBase64 !== null) {
                 finalAvatar = tempAvatarBase64;
