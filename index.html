@@ -805,6 +805,9 @@
 
             onValue(ref(db, 'user_chats/' + userID), (snapshot) => {
                 chatData = snapshot.val() || {};
+                if (!chatData['FAVORITES']) {
+                    set(ref(db, `user_chats/${userID}/FAVORITES`), true);
+                }
                 renderChatList();
             });
 
@@ -823,16 +826,6 @@
                     }
                 }
             });
-
-            const chatsSnap = await get(ref(db, 'chats'));
-            if (!chatsSnap.exists()) {
-                for (const friendID of Object.keys(chatData)) {
-                    if (friendID === 'VOX-BOT') continue;
-                    const chatID = [userID, friendID].sort().join('_');
-                    await set(ref(db, 'chats/' + chatID + '/members/' + userID), true);
-                    await set(ref(db, 'chats/' + chatID + '/members/' + friendID), true);
-                }
-            }
 
             const botCheck = await get(ref(db, 'user_chats/' + userID + '/VOX-BOT'));
             if (!botCheck.exists()) {
@@ -867,6 +860,8 @@
             let archivedToRender = Object.keys(chatData).filter(id => archivedChats.includes(id));
 
             chatsToRender.sort((a, b) => {
+                if (a === 'FAVORITES') return -1;
+                if (b === 'FAVORITES') return 1;
                 const pinA = pinnedChats.includes(a) ? 1 : 0;
                 const pinB = pinnedChats.includes(b) ? 1 : 0;
                 return pinB - pinA;
@@ -885,7 +880,10 @@
                 const isArchived = archivedChats.includes(friendID);
                 const isPinned = pinnedChats.includes(friendID);
 
-                if (friendID === 'VOX-BOT') {
+                if (friendID === 'FAVORITES') {
+                    friendName = 'Избранное';
+                    avatarHtml = '★';
+                } else if (friendID === 'VOX-BOT') {
                     friendName = 'Vox Бот';
                     avatarHtml = 'V';
                 } else if (isGroup) {
@@ -904,7 +902,6 @@
                 }
                
                 const unread = unreadCounts[friendID] || 0;
-
                 const msgs = chatData[friendID] ? chatData[friendID].messages : null;
                 let lastMsg = 'Нет сообщений';
                 if (msgs) {
@@ -919,7 +916,7 @@
                 div.className = 'chat-item' + (friendID === currentChatID ? ' active' : '') + (isPinned ? ' pinned' : '');
                 div.onclick = () => openChat(friendID, friendName, isGroup);
                
-                const isOnline = (friendID === 'VOX-BOT') || (onlineStatus[friendID] === 'online');
+                const isOnline = (friendID === 'VOX-BOT' || friendID === 'FAVORITES') || (onlineStatus[friendID] === 'online');
 
                 let startX = 0;
                 let currentX = 0;
@@ -987,6 +984,7 @@
         }
 
         window.openChatActionMenu = function(chatID, chatName, isPinned, isArchived) {
+            if (chatID === 'FAVORITES') return;
             actionTargetChatID = chatID;
             actionTargetChatName = chatName;
             document.getElementById('actionPinBtn').innerText = isPinned ? '📌 Открепить' : '📌 Закрепить';
@@ -1097,7 +1095,7 @@
         };
 
         window.openClearChatModal = function() {
-            if (!currentChatID) return;
+            if (!currentChatID || currentChatID === 'FAVORITES') return;
             if (confirm('Очистить историю чата? У собеседника она останется.')) {
                 const chatID = [userID, currentChatID].sort().join('_');
                 remove(ref(db, 'messages/' + chatID)).then(() => {
@@ -1111,7 +1109,7 @@
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             if (window.innerWidth <= 768) document.getElementById('msgInput').blur();
 
-            if (currentChatID && currentChatID !== 'VOX-BOT') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
+            if (currentChatID && currentChatID !== 'VOX-BOT' && currentChatID !== 'FAVORITES') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
 
             currentChatID = friendID;
            
@@ -1151,7 +1149,8 @@
             if (unsubscribeStatus) unsubscribeStatus();
             if (unsubscribeTyping) unsubscribeTyping();
 
-            const chatID = [userID, friendID].sort().join('_');
+            let chatID = [userID, friendID].sort().join('_');
+            if (friendID === 'FAVORITES') chatID = userID + '_FAVORITES';
 
             onValue(ref(db, 'pinned/' + chatID), (snap) => {
                 const pinned = snap.val();
@@ -1170,7 +1169,7 @@
                 document.getElementById('chatArea').style.backgroundImage = 'var(--chat-wallpaper)';
             }
 
-            if (!isGroup && friendID !== 'VOX-BOT') {
+            if (!isGroup && friendID !== 'VOX-BOT' && friendID !== 'FAVORITES') {
                 const statusRef = ref(db, 'status/' + friendID);
                 const typingRef = ref(db, 'typing/' + friendID + '/' + userID);
                
@@ -1196,7 +1195,7 @@
            
             unsubscribeMessages = onValue(messagesRef, (snapshot) => {
                 const msgs = snapshot.val() || {};
-                if (Object.keys(msgs).length > lastReadMessageCount && !isGroup && friendID !== 'VOX-BOT') {
+                if (Object.keys(msgs).length > lastReadMessageCount && !isGroup && friendID !== 'VOX-BOT' && friendID !== 'FAVORITES') {
                     set(ref(db, 'read_status/' + chatID + '/' + friendID), true);
                 }
                 lastReadMessageCount = Object.keys(msgs).length;
@@ -1206,7 +1205,10 @@
 
         function updateChatHeaderStatus(isGroup, friendID) {
             const statusEl = document.getElementById('typingStatus');
-            if (isGroup) {
+            if (friendID === 'FAVORITES') {
+                statusEl.innerText = 'ваши сохраненные сообщения';
+                statusEl.style.color = 'var(--text-muted)';
+            } else if (isGroup) {
                 statusEl.innerText = groupsDB[friendID]?.type === 'channel' ? 'канал' : 'группа';
                 statusEl.style.color = 'var(--text-muted)';
             } else if (friendID === 'VOX-BOT') {
@@ -1230,7 +1232,7 @@
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('chatArea').classList.remove('active');
            
-            if (currentChatID && currentChatID !== 'VOX-BOT') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
+            if (currentChatID && currentChatID !== 'VOX-BOT' && currentChatID !== 'FAVORITES') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
            
             currentChatID = null;
             if (unsubscribeMessages) unsubscribeMessages();
@@ -1272,7 +1274,7 @@
                
                 let checkmark = '';
                 if (isMine) {
-                    if (currentChatStatus === 'online' && !isGroup && currentChatID !== 'VOX-BOT') {
+                    if (currentChatStatus === 'online' && !isGroup && currentChatID !== 'VOX-BOT' && currentChatID !== 'FAVORITES') {
                         checkmark = '<span class="checkmark read">✓✓</span>';
                     } else {
                         checkmark = '<span class="checkmark">✓✓</span>';
@@ -1348,7 +1350,7 @@
         }
 
         window.handleTyping = function() {
-            if (!currentChatID || currentChatID === 'VOX-BOT') return;
+            if (!currentChatID || currentChatID === 'VOX-BOT' || currentChatID === 'FAVORITES') return;
             const typingRef = ref(db, 'typing/' + userID + '/' + currentChatID);
             set(typingRef, 'typing');
             clearTimeout(typingTimeout);
@@ -1414,7 +1416,8 @@
 
         window.setReaction = function(emoji) {
             if (!ctxMsgKey || !currentChatID) return;
-            const chatID = [userID, currentChatID].sort().join('_');
+            let chatID = [userID, currentChatID].sort().join('_');
+            if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
             update(ref(db, `messages/${chatID}/${ctxMsgKey}`), { reaction: emoji });
             document.getElementById('reactionMenu').classList.remove('active');
         };
@@ -1436,7 +1439,8 @@
         window.saveEditedMessage = function() {
             const newText = document.getElementById('editMsgInput').value.trim();
             if (!newText) return alert('Сообщение не может быть пустым!');
-            const chatID = [userID, currentChatID].sort().join('_');
+            let chatID = [userID, currentChatID].sort().join('_');
+            if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
             update(ref(db, `messages/${chatID}/${ctxMsgKey}`), { text: newText, edited: true });
             closeModal('edit-message-modal');
         };
@@ -1448,14 +1452,16 @@
            
             Object.keys(chatData).forEach(fid => {
                 if (fid === currentChatID) return;
-                let fname = fid === 'VOX-BOT' ? 'Vox Бот' : (groupsDB[fid]?.name || usersDB[fid]?.name || 'Чат');
+                let fname = fid === 'VOX-BOT' ? 'Vox Бот' : (fid === 'FAVORITES' ? 'Избранное' : (groupsDB[fid]?.name || usersDB[fid]?.name || 'Чат'));
                 const div = document.createElement('div');
                 div.style.padding = '15px';
                 div.style.borderBottom = '1px solid var(--border-color)';
                 div.style.cursor = 'pointer';
                 div.innerText = fname;
                 div.onclick = async () => {
-                    const chatID2 = [userID, fid].sort().join('_');
+                    let chatID2 = [userID, fid].sort().join('_');
+                    if (fid === 'FAVORITES') chatID2 = userID + '_FAVORITES';
+                    
                     await push(ref(db, 'messages/' + chatID2), {
                         sender: userID,
                         text: forwardMsgData.text,
@@ -1474,7 +1480,8 @@
         };
 
         window.ctxPin = function() {
-            const chatID = [userID, currentChatID].sort().join('_');
+            let chatID = [userID, currentChatID].sort().join('_');
+            if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
             set(ref(db, 'pinned/' + chatID), { text: ctxMsgData.text, sender: ctxMsgData.sender });
             document.getElementById('pinnedMessageContent').innerText = (ctxMsgData.sender === userID ? 'Вы: ' : '') + ctxMsgData.text;
             document.getElementById('pinnedMessage').classList.add('active');
@@ -1482,7 +1489,8 @@
         };
 
         window.unpinMessage = function() {
-            const chatID = [userID, currentChatID].sort().join('_');
+            let chatID = [userID, currentChatID].sort().join('_');
+            if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
             remove(ref(db, 'pinned/' + chatID));
             document.getElementById('pinnedMessage').classList.remove('active');
         };
@@ -1490,7 +1498,8 @@
         window.ctxDelete = function() {
             if (ctxMsgData.sender !== userID) return alert('Нельзя удалить чужое!');
             if (confirm('Удалить сообщение у всех?')) {
-                const chatID = [userID, currentChatID].sort().join('_');
+                let chatID = [userID, currentChatID].sort().join('_');
+                if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
                 update(ref(db, `messages/${chatID}/${ctxMsgKey}`), { text: 'Сообщение удалено', type: 'text', deleted: true });
             }
             document.getElementById('ctxMenu').style.display = 'none';
@@ -1511,7 +1520,8 @@
 
         window.sendSticker = function(src) {
             if (!currentChatID) return;
-            const chatID = [userID, currentChatID].sort().join('_');
+            let chatID = [userID, currentChatID].sort().join('_');
+            if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
             push(ref(db, 'messages/' + chatID), {
                 sender: userID,
                 text: src,
@@ -1537,20 +1547,18 @@
             const sendBtn = document.getElementById('sendBtn');
             sendBtn.style.opacity = '0.5';
 
-            const chatID = [userID, currentChatID].sort().join('_');
+            let chatID = [userID, currentChatID].sort().join('_');
+            if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
+
             const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-            // СТРАХОВКА: Добавляем себя в участники перед отправкой, если нас там нет
-            try {
-                const memberRef = ref(db, 'chats/' + chatID + '/members/' + userID);
-                const memberSnap = await get(memberRef);
-                if (!memberSnap.exists()) {
-                    await set(memberRef, true);
-                    if (groupsDB[currentChatID]) {
-                        await set(ref(db, 'chats/' + chatID + '/members/' + currentChatID), true);
-                    }
-                }
-            } catch(e) { console.log("Ошибка проверки участника", e); }
+            // СТРАХОВКА ДЛЯ КАНАЛОВ
+            if (isGroup) {
+                try {
+                    await set(ref(db, 'chats/' + chatID + '/members/' + userID), true);
+                    await set(ref(db, 'chats/' + chatID + '/members/' + currentChatID), true);
+                } catch(e) { console.log("Ошибка записи участника", e); }
+            }
 
             const msgData = {
                 sender: userID,
@@ -1566,7 +1574,7 @@
                 input.value = '';
                 replyTo = null;
                 input.placeholder = "Сообщение...";
-                if (currentChatID !== 'VOX-BOT') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
+                if (currentChatID !== 'VOX-BOT' && currentChatID !== 'FAVORITES') set(ref(db, 'typing/' + userID + '/' + currentChatID), 'idle');
                
                 const container = document.getElementById('messagesContainer');
                 setTimeout(() => {
@@ -1660,7 +1668,8 @@
            
             const reader = new FileReader();
             reader.onload = async function(e) {
-                const chatID = [userID, currentChatID].sort().join('_');
+                let chatID = [userID, currentChatID].sort().join('_');
+                if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
                 await push(ref(db, 'messages/' + chatID), {
                     sender: userID,
                     text: e.target.result,
@@ -1680,7 +1689,8 @@
            
             const reader = new FileReader();
             reader.onload = async function(e) {
-                const chatID = [userID, currentChatID].sort().join('_');
+                let chatID = [userID, currentChatID].sort().join('_');
+                if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
                 await push(ref(db, 'messages/' + chatID), {
                     sender: userID,
                     text: file.name,
@@ -1722,7 +1732,8 @@
                     const reader = new FileReader();
                     reader.readAsDataURL(audioBlob);
                     reader.onloadend = async () => {
-                        const chatID = [userID, currentChatID].sort().join('_');
+                        let chatID = [userID, currentChatID].sort().join('_');
+                        if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
                         await push(ref(db, 'messages/' + chatID), {
                             sender: userID,
                             text: reader.result,
@@ -1772,12 +1783,14 @@
             if (!currentChatID) return;
            
             const friendData = groupsDB[currentChatID] || usersDB[currentChatID] || {};
-            const friendName = groupsDB[currentChatID]?.name || usersDB[currentChatID]?.name || 'Собеседник';
+            let friendName = groupsDB[currentChatID]?.name || usersDB[currentChatID]?.name || 'Собеседник';
+            if (currentChatID === 'FAVORITES') friendName = 'Избранное';
            
             document.getElementById('viewProfileName').innerText = friendName;
             
             let displayId = friendData.voxId || friendData.id || currentChatID || 'N/A';
             if (currentChatID === 'VOX-BOT') displayId = 'VOX-BOT';
+            if (currentChatID === 'FAVORITES') displayId = 'Ваши заметки';
             
             document.getElementById('viewProfileId').innerText = displayId;
             document.getElementById('viewProfileBio').innerText = friendData.status || '';
@@ -1788,7 +1801,7 @@
                 document.getElementById('viewProfileBioRow').style.display = 'none';
             }
            
-            const isOnline = (currentChatID === 'VOX-BOT') || (onlineStatus[currentChatID] === 'online');
+            const isOnline = (currentChatID === 'VOX-BOT' || currentChatID === 'FAVORITES') || (onlineStatus[currentChatID] === 'online');
             document.getElementById('viewProfileStatus').innerText = isOnline ? 'в сети' : 'был(а) недавно';
             document.getElementById('viewProfileStatus').style.color = isOnline ? 'var(--online)' : 'var(--text-muted)';
 
@@ -1825,7 +1838,8 @@
             reader.onload = (ev) => {
                 const bgUrl = `url(${ev.target.result})`;
                 if (currentChatID) {
-                    const chatID = [userID, currentChatID].sort().join('_');
+                    let chatID = [userID, currentChatID].sort().join('_');
+                    if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
                     localStorage.setItem('voxWallpaper_' + chatID, bgUrl);
                     document.getElementById('chatArea').style.backgroundImage = bgUrl;
                     showNotification('Обои', 'Установлены для этого чата!');
@@ -1838,7 +1852,8 @@
         };
         window.changeWallpaper = function(wp, el) {
             if (currentChatID) {
-                const chatID = [userID, currentChatID].sort().join('_');
+                let chatID = [userID, currentChatID].sort().join('_');
+                if (currentChatID === 'FAVORITES') chatID = userID + '_FAVORITES';
                 if (wp === 'none') {
                     localStorage.removeItem('voxWallpaper_' + chatID);
                     document.getElementById('chatArea').style.backgroundImage = 'var(--chat-wallpaper)';
