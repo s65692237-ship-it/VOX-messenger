@@ -25,32 +25,17 @@
             --online: #10b981;
         }
 
-        body.light-theme {
-            --bg-color: #f8fafc; --bg-secondary: #ffffff; --bg-card: #f1f5f9;
-            --bg-hover: #e2e8f0; --border-color: #cbd5e1; --text-main: #0f172a;
-            --text-muted: #64748b; --msg-in: #ffffff; --msg-out: linear-gradient(135deg, #398BFF, #895CFF);
-        }
-        body.cyberpunk-theme {
-            --bg-color: #050505; --bg-secondary: #0d0221; --bg-card: #1a0033;
-            --bg-hover: #2a0055; --border-color: #ff00ff; --text-main: #00ffff;
-            --text-muted: #ff00ff; --msg-in: #1a0033; --msg-out: linear-gradient(135deg, #330066, #660099);
-        }
-        body.pink-theme {
-            --bg-color: #fdf2f8; --bg-secondary: #ffffff; --bg-card: #fce7f3;
-            --bg-hover: #fbcfe8; --border-color: #f9a8d4; --text-main: #831843;
-            --text-muted: #db2777; --msg-in: #ffffff; --msg-out: linear-gradient(135deg, #f472b6, #ec4899);
-        }
+        body.light-theme { --bg-color: #f8fafc; --bg-secondary: #ffffff; --bg-card: #f1f5f9; --bg-hover: #e2e8f0; --border-color: #cbd5e1; --text-main: #0f172a; --text-muted: #64748b; --msg-in: #ffffff; --msg-out: linear-gradient(135deg, #398BFF, #895CFF); }
+        body.cyberpunk-theme { --bg-color: #050505; --bg-secondary: #0d0221; --bg-card: #1a0033; --bg-hover: #2a0055; --border-color: #ff00ff; --text-main: #00ffff; --text-muted: #ff00ff; --msg-in: #1a0033; --msg-out: linear-gradient(135deg, #330066, #660099); }
+        body.pink-theme { --bg-color: #fdf2f8; --bg-secondary: #ffffff; --bg-card: #fce7f3; --bg-hover: #fbcfe8; --border-color: #f9a8d4; --text-main: #831843; --text-muted: #db2777; --msg-in: #ffffff; --msg-out: linear-gradient(135deg, #f472b6, #ec4899); }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
-        
         body { background-color: var(--bg-color); color: var(--text-main); height: 100vh; height: 100dvh; display: flex; justify-content: center; align-items: center; overflow: hidden; font-size: 14px; }
 
-        /* АВТОРИЗАЦИЯ */
         #auth-screen { position: fixed; inset: 0; background: var(--bg-color); z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
         .auth-box { background: var(--bg-card); padding: 40px 30px; border-radius: 24px; border: 1px solid var(--border-color); width: 100%; max-width: 400px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .auth-box h1 { font-size: 36px; color: var(--accent-blue); margin-bottom: 10px; letter-spacing: 2px;}
         .auth-box p { color: var(--text-muted); margin-bottom: 20px; }
-        
         input[type="text"], input[type="email"], input[type="password"] { width: 100%; padding: 15px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-main); font-size: 16px; margin-bottom: 15px; outline: none; text-align: center; transition: 0.2s; }
         input:focus { border-color: var(--accent-blue); }
         .auth-box button { width: 100%; padding: 15px; background: var(--accent-blue); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; }
@@ -58,7 +43,6 @@
         .auth-toggle { font-size: 13px; color: var(--text-muted); cursor: pointer; text-decoration: underline; margin-top: 15px;}
         .auth-error { color: var(--danger); font-size: 13px; margin-top: 5px; margin-bottom: 10px; min-height: 18px; font-weight: 500;}
 
-        /* ОСНОВНОЙ ИНТЕРФЕЙС */
         .vox-container { width: 100%; height: 100%; max-width: 1400px; max-height: 900px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 24px; display: flex; overflow: hidden; position: relative; display: none; }
         .sidebar { width: 380px; border-right: 1px solid var(--border-color); background: var(--bg-color); display: flex; flex-direction: column; flex-shrink: 0; transition: transform 0.3s; }
         .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border-color); }
@@ -107,7 +91,6 @@
         .message.incoming .msg-bubble { background: var(--msg-in); border-bottom-left-radius: 4px; border: 1px solid var(--border-color); }
         .message.outgoing .msg-bubble { background: var(--msg-out); color: white; border-bottom-right-radius: 4px; }
        
-        /* ФИКС ФОТО */
         .message.image .msg-bubble { background: transparent; padding: 0; border: none; }
         .message.image img { max-width: 260px; max-height: 350px; width: auto; height: auto; border-radius: 12px; object-fit: cover; display: block; }
         
@@ -208,6 +191,16 @@
                 <p style="color:var(--text-muted); font-size: 13px; margin-bottom:5px;">Ваш VOX TAG:</p>
                 <div id="myIdDisplay" onclick="copyMyId()" style="font-size: 18px; font-weight: 700; color: var(--accent-blue); cursor: pointer;">VOX-0000</div>
             </div>
+            
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button class="action-btn btn-secondary" onclick="changeTheme('default')" style="flex:1;">Тёмная</button>
+                <button class="action-btn btn-secondary" onclick="changeTheme('light')" style="flex:1;">Светлая</button>
+            </div>
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button class="action-btn btn-secondary" onclick="changeTheme('cyberpunk')" style="flex:1;">Кибер</button>
+                <button class="action-btn btn-secondary" onclick="changeTheme('pink')" style="flex:1;">Розовая</button>
+            </div>
+
             <button class="action-btn btn-secondary" onclick="openLogoutModal()" style="color:var(--danger); border-color:var(--danger);">Выйти из аккаунта</button>
             <button class="action-btn btn-primary" onclick="closeModal('settings-modal')">Закрыть</button>
         </div>
@@ -325,11 +318,9 @@
         let ctxMsgKey = null;
         let ctxMsgData = null;
         let actionTargetChatID = null;
-
-        // --- ГОЛОСОВЫЕ ПЕРЕМЕННЫЕ ---
+        let isRecording = false;
         let mediaRecorder;
         let audioChunks = [];
-        let isRecording = false;
 
         window.toggleAuthMode = function() {
             isRegisterMode = !isRegisterMode;
@@ -440,7 +431,6 @@
             }
         };
 
-        // --- ЛОГИКА ПАПОК ЧАТОВ ---
         window.switchTab = function(el) {
             document.querySelectorAll('.chat-tab').forEach(t => t.classList.remove('active'));
             el.classList.add('active');
@@ -501,18 +491,48 @@
             document.getElementById('chatArea').classList.add('active');
             renderChatList();
 
+            // ЧЕРНОВИКИ: Загружаем текст при открытии
+            const draftKey = `vox_draft_${[userID, friendID].sort().join('_')}`;
+            const savedDraft = localStorage.getItem(draftKey);
+            const msgInput = document.getElementById('msgInput');
+            if (savedDraft) { msgInput.value = savedDraft; } else { msgInput.value = ''; }
+
             let chatID = friendID === 'FAVORITES' ? userID + '_FAVORITES' : [userID, friendID].sort().join('_');
             
             onValue(ref(db, 'messages/' + chatID), (snapshot) => {
                 renderMessages(snapshot.val() || {});
+                // СТАТУС ПРОЧИТАНО: Отмечаем как прочитанное
+                if (friendID !== 'FAVORITES' && friendID !== 'VOX-BOT') {
+                    set(ref(db, 'read_status/' + chatID + '/' + userID), true);
+                }
             });
         };
 
         window.closeChat = function() {
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('chatArea').classList.remove('active');
+            
+            // ЧЕРНОВИКИ: Сохраняем текст при закрытии
+            const msgInput = document.getElementById('msgInput');
+            if (currentChatID) {
+                const draftKey = `vox_draft_${[userID, currentChatID].sort().join('_')}`;
+                if (msgInput.value.trim()) {
+                    localStorage.setItem(draftKey, msgInput.value);
+                } else {
+                    localStorage.removeItem(draftKey);
+                }
+            }
             currentChatID = null;
         };
+
+        // ЧЕРНОВИКИ: Сохраняем при вводе
+        document.getElementById('msgInput').addEventListener('input', function() {
+            if (currentChatID) {
+                const draftKey = `vox_draft_${[userID, currentChatID].sort().join('_')}`;
+                if (this.value.trim()) localStorage.setItem(draftKey, this.value);
+                else localStorage.removeItem(draftKey);
+            }
+        });
 
         function renderMessages(msgsObj) {
             const container = document.getElementById('messagesContainer');
@@ -570,6 +590,7 @@
                     sender: userID, text: text, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp(), type: 'text'
                 });
                 input.value = '';
+                localStorage.removeItem(`vox_draft_${[userID, currentChatID].sort().join('_')}`);
             } catch (e) { alert('Ошибка: ' + e.message); } 
             finally { isSending = false; }
         };
@@ -590,7 +611,6 @@
             event.target.value = '';
         };
 
-        // --- ГОЛОСОВЫЕ СООБЩЕНИЯ ---
         window.startVoiceRecord = async function() {
             if (isRecording) { stopVoiceRecord(); return; }
             if (!currentChatID) return alert('Выберите чат!');
@@ -696,6 +716,11 @@
             if (theme !== 'default') document.body.classList.add(theme + '-theme');
             localStorage.setItem('voxTheme', theme);
         };
+
+        window.addEventListener('load', () => {
+            const savedTheme = localStorage.getItem('voxTheme') || 'default';
+            changeTheme(savedTheme);
+        });
     </script>
 </body>
 </html>
