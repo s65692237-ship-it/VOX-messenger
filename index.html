@@ -25,6 +25,22 @@
             --online: #10b981;
         }
 
+        body.light-theme {
+            --bg-color: #f8fafc; --bg-secondary: #ffffff; --bg-card: #f1f5f9;
+            --bg-hover: #e2e8f0; --border-color: #cbd5e1; --text-main: #0f172a;
+            --text-muted: #64748b; --msg-in: #ffffff; --msg-out: linear-gradient(135deg, #398BFF, #895CFF);
+        }
+        body.cyberpunk-theme {
+            --bg-color: #050505; --bg-secondary: #0d0221; --bg-card: #1a0033;
+            --bg-hover: #2a0055; --border-color: #ff00ff; --text-main: #00ffff;
+            --text-muted: #ff00ff; --msg-in: #1a0033; --msg-out: linear-gradient(135deg, #330066, #660099);
+        }
+        body.pink-theme {
+            --bg-color: #fdf2f8; --bg-secondary: #ffffff; --bg-card: #fce7f3;
+            --bg-hover: #fbcfe8; --border-color: #f9a8d4; --text-main: #831843;
+            --text-muted: #db2777; --msg-in: #ffffff; --msg-out: linear-gradient(135deg, #f472b6, #ec4899);
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
         
         body { background-color: var(--bg-color); color: var(--text-main); height: 100vh; height: 100dvh; display: flex; justify-content: center; align-items: center; overflow: hidden; font-size: 14px; }
@@ -269,6 +285,7 @@
            
             <div class="input-area">
                 <button class="icon-btn" onclick="openImagePicker()">📷</button>
+                <button class="icon-btn" onclick="startVoiceRecord()" id="voiceBtn">🎙️</button>
                 <input type="text" id="msgInput" placeholder="Сообщение" onkeypress="handleKeyPress(event)" oninput="handleTyping()">
                 <button class="send-btn" id="sendBtn" onclick="sendMessage()"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="white" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
             </div>
@@ -308,6 +325,11 @@
         let ctxMsgKey = null;
         let ctxMsgData = null;
         let actionTargetChatID = null;
+
+        // --- ГОЛОСОВЫЕ ПЕРЕМЕННЫЕ ---
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
 
         window.toggleAuthMode = function() {
             isRegisterMode = !isRegisterMode;
@@ -418,18 +440,29 @@
             }
         };
 
-        function renderChatList() {
+        // --- ЛОГИКА ПАПОК ЧАТОВ ---
+        window.switchTab = function(el) {
+            document.querySelectorAll('.chat-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            renderChatList(el.innerText);
+        };
+
+        function renderChatList(filter = 'Все') {
             const container = document.getElementById('chatList');
             container.innerHTML = '';
             let chatsToRender = Object.keys(chatData).sort((a, b) => a === 'FAVORITES' ? -1 : (b === 'FAVORITES' ? 1 : 0));
 
             chatsToRender.forEach(friendID => {
-                let friendName = friendID === 'FAVORITES' ? 'Избранное' : (friendID === 'VOX-BOT' ? 'Vox Бот' : (usersDB[friendID]?.name || 'Юзер'));
+                const isGroup = groupsDB[friendID] !== undefined;
+                if (filter === 'Личные' && isGroup) return;
+                if (filter === 'Группы' && !isGroup) return;
+
+                let friendName = friendID === 'FAVORITES' ? 'Избранное' : (friendID === 'VOX-BOT' ? 'Vox Бот' : (isGroup ? groupsDB[friendID].name : (usersDB[friendID]?.name || 'Юзер')));
                 let avatarTxt = friendID === 'FAVORITES' ? '★' : friendName[0].toUpperCase();
                 
                 const div = document.createElement('div');
                 div.className = 'chat-item' + (friendID === currentChatID ? ' active' : '');
-                div.onclick = () => openChat(friendID, friendName);
+                div.onclick = () => openChat(friendID, friendName, isGroup);
                 
                 let pressTimer;
                 div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => openChatActionMenu(friendID, friendName), 600); });
@@ -460,7 +493,7 @@
             closeChatActionMenu();
         };
 
-        window.openChat = function(friendID, friendName) {
+        window.openChat = function(friendID, friendName, isGroup) {
             currentChatID = friendID;
             document.getElementById('headerName').innerText = friendName;
             document.getElementById('headerAvatarText').innerText = friendName[0].toUpperCase();
@@ -497,6 +530,8 @@
                 if (msg.type === 'image') {
                     div.classList.add('image');
                     content = `<img src="${msg.text}">`;
+                } else if (msg.type === 'voice') {
+                    content = `<audio controls src="${msg.text}" style="max-width: 200px;"></audio>`;
                 } else {
                     content = `${msg.text}`;
                 }
@@ -554,6 +589,47 @@
             reader.readAsDataURL(file);
             event.target.value = '';
         };
+
+        // --- ГОЛОСОВЫЕ СООБЩЕНИЯ ---
+        window.startVoiceRecord = async function() {
+            if (isRecording) { stopVoiceRecord(); return; }
+            if (!currentChatID) return alert('Выберите чат!');
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        let chatID = currentChatID === 'FAVORITES' ? userID + '_FAVORITES' : [userID, currentChatID].sort().join('_');
+                        await push(ref(db, 'messages/' + chatID), {
+                            sender: userID, text: reader.result, type: 'voice', time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp()
+                        });
+                    };
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById('voiceBtn').innerText = '⏹️';
+                setTimeout(() => { if (isRecording) stopVoiceRecord(); }, 15000);
+            } catch (err) {
+                alert("Ошибка микрофона: " + err.message);
+            }
+        };
+
+        function stopVoiceRecord() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                isRecording = false;
+                document.getElementById('voiceBtn').innerText = '🎙️';
+            }
+        }
 
         window.searchFriend = async function() {
             let rawInput = document.getElementById('friendSearchInput').value;
@@ -615,10 +691,10 @@
             alert('VOX TAG скопирован!');
         };
 
-        window.filterChats = function() { /* Заглушка */ };
-        window.switchTab = function(el) {
-            document.querySelectorAll('.chat-tab').forEach(t => t.classList.remove('active'));
-            el.classList.add('active');
+        window.changeTheme = function(theme) {
+            document.body.className = '';
+            if (theme !== 'default') document.body.classList.add(theme + '-theme');
+            localStorage.setItem('voxTheme', theme);
         };
     </script>
 </body>
