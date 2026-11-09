@@ -94,6 +94,7 @@
         .message.image .msg-bubble { background: transparent; padding: 0; border: none; }
         .message.image img { max-width: 260px; max-height: 350px; width: auto; height: auto; border-radius: 12px; object-fit: cover; display: block; }
         
+        .sender-name { font-size: 11px; color: var(--accent-blue); margin-bottom: 3px; font-weight: 600; }
         .msg-time { position: absolute; right: 8px; bottom: 4px; font-size: 10px; color: rgba(255,255,255,0.6); display: flex; align-items: center; gap: 3px;}
         .message.incoming .msg-time { color: var(--text-muted); }
 
@@ -177,10 +178,39 @@
     <div class="modal-overlay" id="add-friend-modal" onclick="overlayClick(event, 'add-friend-modal')">
         <div class="modal-card" onclick="event.stopPropagation()">
             <h2>Добавить</h2>
-            <input type="text" id="friendSearchInput" placeholder="Введите VOX TAG друга">
-            <div id="searchResult" style="margin-bottom:20px; color: var(--accent-blue); font-size:14px;"></div>
-            <button class="action-btn btn-primary" onclick="searchFriend()">Найти по VOX TAG</button>
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button class="action-btn btn-secondary" onclick="switchAddTab('friend')" id="tab-friend" style="flex:1;">Друга</button>
+                <button class="action-btn btn-secondary" onclick="switchAddTab('group')" id="tab-group" style="flex:1;">Группу</button>
+                <button class="action-btn btn-secondary" onclick="switchAddTab('channel')" id="tab-channel" style="flex:1;">Канал</button>
+            </div>
+            
+            <div id="add-friend-pane">
+                <input type="text" id="friendSearchInput" placeholder="Введите VOX TAG друга">
+                <div id="searchResult" style="margin-bottom:20px; font-size:14px;"></div>
+                <button class="action-btn btn-primary" onclick="searchFriend()">Найти по VOX TAG</button>
+            </div>
+            
+            <div id="add-group-pane" style="display:none;">
+                <input type="text" id="groupNameInput" placeholder="Название группы">
+                <button class="action-btn btn-primary" onclick="createGroup()">Создать группу</button>
+            </div>
+
+            <div id="add-channel-pane" style="display:none;">
+                <input type="text" id="channelNameInput" placeholder="Название канала">
+                <button class="action-btn btn-primary" onclick="createChannel()">Создать канал</button>
+            </div>
+
             <button class="action-btn btn-secondary" onclick="closeModal('add-friend-modal')">Закрыть</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="invite-modal" onclick="overlayClick(event, 'invite-modal')">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <h2>Добавить участника</h2>
+            <input type="text" id="inviteInput" placeholder="Введите VOX TAG друга">
+            <div id="inviteResult" style="margin-bottom:20px; font-size:14px;"></div>
+            <button class="action-btn btn-primary" onclick="addMemberToGroup()">Добавить</button>
+            <button class="action-btn btn-secondary" onclick="closeModal('invite-modal')">Закрыть</button>
         </div>
     </div>
 
@@ -218,7 +248,8 @@
         <div class="menu-content" onclick="event.stopPropagation()">
             <button class="menu-btn" onclick="ctxReply()">↩️ Ответить</button>
             <button class="menu-btn" onclick="ctxForward()">➡️ Переслать</button>
-            <button class="menu-btn danger" onclick="ctxDelete()">🗑️ Удалить</button>
+            <button class="menu-btn danger" onclick="ctxDeleteLocal()">🙈 Удалить у меня</button>
+            <button class="menu-btn danger" onclick="ctxDeleteGlobal()">🗑️ Удалить у всех</button>
             <button class="menu-btn" onclick="closeCtxMenu()" style="justify-content: center; color: var(--text-muted);">Отмена</button>
         </div>
     </div>
@@ -263,6 +294,7 @@
                 <div class="chat-tab active" onclick="switchTab(this)">Все</div>
                 <div class="chat-tab" onclick="switchTab(this)">Личные</div>
                 <div class="chat-tab" onclick="switchTab(this)">Группы</div>
+                <div class="chat-tab" onclick="switchTab(this)">Каналы</div>
             </div>
             <div class="chat-list" id="chatList"></div>
         </div>
@@ -278,6 +310,7 @@
                     <div class="chat-header-info" id="headerName">Выберите чат</div>
                     <div class="chat-header-status" id="typingStatus"></div>
                 </div>
+                <button id="inviteBtn" onclick="event.stopPropagation(); openInviteModal()" style="display:none; background:none; border:none; color:var(--accent-blue); font-size:20px; cursor:pointer;">➕</button>
             </div>
 
             <div class="messages" id="messagesContainer">
@@ -336,6 +369,95 @@
         let audioChunks = [];
 
         let pinnedChats = JSON.parse(localStorage.getItem('voxPinned') || '[]');
+        let deletedMessagesLocally = JSON.parse(localStorage.getItem('voxDeletedLocal') || '[]');
+
+        window.switchAddTab = function(tab) {
+            document.getElementById('add-friend-pane').style.display = 'none';
+            document.getElementById('add-group-pane').style.display = 'none';
+            document.getElementById('add-channel-pane').style.display = 'none';
+            
+            document.getElementById('tab-friend').classList.remove('btn-primary');
+            document.getElementById('tab-group').classList.remove('btn-primary');
+            document.getElementById('tab-channel').classList.remove('btn-primary');
+            document.getElementById('tab-friend').classList.add('btn-secondary');
+            document.getElementById('tab-group').classList.add('btn-secondary');
+            document.getElementById('tab-channel').classList.add('btn-secondary');
+
+            if (tab === 'friend') {
+                document.getElementById('add-friend-pane').style.display = 'block';
+                document.getElementById('tab-friend').classList.add('btn-primary');
+                document.getElementById('tab-friend').classList.remove('btn-secondary');
+            } else if (tab === 'group') {
+                document.getElementById('add-group-pane').style.display = 'block';
+                document.getElementById('tab-group').classList.add('btn-primary');
+                document.getElementById('tab-group').classList.remove('btn-secondary');
+            } else {
+                document.getElementById('add-channel-pane').style.display = 'block';
+                document.getElementById('tab-channel').classList.add('btn-primary');
+                document.getElementById('tab-channel').classList.remove('btn-secondary');
+            }
+        };
+
+        window.createGroup = async function() {
+            const name = document.getElementById('groupNameInput').value.trim();
+            if (!name) return alert('Введите название!');
+
+            const groupId = 'GRP-' + Date.now() + Math.floor(Math.random() * 1000);
+            try {
+                await set(ref(db, 'groups/' + groupId), {
+                    name: name, type: 'group', creator: userID, members: { [userID]: true }
+                });
+                await set(ref(db, `user_chats/${userID}/${groupId}`), true);
+                closeModal('add-friend-modal');
+                openChat(groupId, name, true);
+            } catch (e) { alert('Ошибка создания группы: ' + e.message); }
+        };
+
+        window.createChannel = async function() {
+            const name = document.getElementById('channelNameInput').value.trim();
+            if (!name) return alert('Введите название!');
+
+            const channelId = 'CHN-' + Date.now() + Math.floor(Math.random() * 1000);
+            try {
+                await set(ref(db, 'groups/' + channelId), {
+                    name: name, type: 'channel', creator: userID, members: { [userID]: true }
+                });
+                await set(ref(db, `user_chats/${userID}/${channelId}`), true);
+                closeModal('add-friend-modal');
+                openChat(channelId, name, true);
+            } catch (e) { alert('Ошибка создания канала: ' + e.message); }
+        };
+
+        window.openInviteModal = function() {
+            if (!currentChatID || !groupsDB[currentChatID]) return;
+            document.getElementById('inviteInput').value = '';
+            document.getElementById('inviteResult').innerText = '';
+            openModal('invite-modal');
+        };
+
+        window.addMemberToGroup = async function() {
+            let queryID = document.getElementById('inviteInput').value.trim().toUpperCase().replace(/\s+/g, '');
+            const resultEl = document.getElementById('inviteResult');
+            if (!queryID) return;
+
+            let foundUid = null;
+            for (const [uid, data] of Object.entries(usersDB)) {
+                if (data.voxId === queryID) { foundUid = uid; break; }
+            }
+
+            if (foundUid) {
+                try {
+                    await update(ref(db, `groups/${currentChatID}/members`), { [foundUid]: true });
+                    await set(ref(db, `user_chats/${foundUid}/${currentChatID}`), true);
+                    resultEl.innerText = 'Участник добавлен!';
+                    resultEl.style.color = 'var(--online)';
+                    document.getElementById('inviteInput').value = '';
+                } catch (e) { resultEl.innerText = 'Ошибка: ' + e.message; resultEl.style.color = 'var(--danger)'; }
+            } else {
+                resultEl.innerText = 'Пользователь не найден.';
+                resultEl.style.color = 'var(--danger)';
+            }
+        };
 
         window.toggleAuthMode = function() {
             isRegisterMode = !isRegisterMode;
@@ -362,12 +484,16 @@
                     
                     let voxId = '';
                     let isUnique = false;
-                    while (!isUnique) {
+                    let attempts = 0;
+                    while (!isUnique && attempts < 50) {
                         voxId = 'VOX-' + Math.random().toString(36).substring(2, 6).toUpperCase();
                         const snap = await get(ref(db, 'users'));
                         const users = snap.val() || {};
                         isUnique = !Object.values(users).some(u => u.voxId === voxId);
+                        attempts++;
                     }
+
+                    if (!isUnique) throw new Error('Не удалось создать уникальный ID, попробуйте снова.');
 
                     await set(ref(db, 'users/' + newUid), {
                         name: email.split('@')[0], voxId: voxId, avatar: tempAvatarBase64 || "", status: 'В сети VOX'
@@ -388,11 +514,16 @@
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 userID = user.uid;
-                const profileSnap = await get(ref(db, 'users/' + userID));
-                if (!profileSnap.exists()) { setTimeout(() => initApp(), 1000); return; }
-                document.getElementById('auth-screen').style.display = 'none';
-                document.getElementById('mainApp').style.display = 'flex';
-                initApp();
+                try {
+                    const profileSnap = await get(ref(db, 'users/' + userID));
+                    if (!profileSnap.exists()) { setTimeout(() => initApp(), 1000); return; }
+                    document.getElementById('auth-screen').style.display = 'none';
+                    document.getElementById('mainApp').style.display = 'flex';
+                    initApp();
+                } catch (e) {
+                    console.error('Ошибка профиля:', e);
+                    document.getElementById('auth-screen').style.display = 'flex';
+                }
             } else {
                 userID = null;
                 document.getElementById('auth-screen').style.display = 'flex';
@@ -405,13 +536,16 @@
             const file = event.target.files[0];
             if (!file) return;
             if (file.size > 200000) { alert('Аватар слишком большой (макс 200KB)'); return; }
+            if (!file.type.startsWith('image/')) { alert('Выберите изображение'); return; }
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
                     canvas.width = 100; canvas.height = 100;
-                    canvas.getContext('2d').drawImage(img, 0, 0, 100, 100);
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return alert('Ошибка canvas');
+                    ctx.drawImage(img, 0, 0, 100, 100);
                     tempAvatarBase64 = canvas.toDataURL('image/jpeg', 0.6);
                     if (context === 'auth') {
                         document.getElementById('authAvatarImg').src = tempAvatarBase64;
@@ -425,22 +559,24 @@
         };
 
         async function initApp() {
-            onValue(ref(db, 'users'), (snapshot) => {
-                usersDB = snapshot.val() || {};
-                updateProfileUI();
-                renderChatList();
-            });
-            
-            onValue(ref(db, 'groups'), (snapshot) => {
-                groupsDB = snapshot.val() || {};
-                renderChatList();
-            });
+            try {
+                onValue(ref(db, 'users'), (snapshot) => {
+                    usersDB = snapshot.val() || {};
+                    updateProfileUI();
+                    renderChatList();
+                }, (error) => console.error("Ошибка users:", error));
 
-            onValue(ref(db, 'user_chats/' + userID), (snapshot) => {
-                chatData = snapshot.val() || {};
-                if (!chatData['FAVORITES']) set(ref(db, `user_chats/${userID}/FAVORITES`), true);
-                renderChatList();
-            });
+                onValue(ref(db, 'groups'), (snapshot) => {
+                    groupsDB = snapshot.val() || {};
+                    renderChatList();
+                }, (error) => console.error("Ошибка groups:", error));
+
+                onValue(ref(db, 'user_chats/' + userID), (snapshot) => {
+                    chatData = snapshot.val() || {};
+                    if (!chatData['FAVORITES']) set(ref(db, `user_chats/${userID}/FAVORITES`), true);
+                    renderChatList();
+                }, (error) => console.error("Ошибка user_chats:", error));
+            } catch (e) { console.error("Ошибка initApp:", e); }
         }
 
         window.updateProfileUI = function() {
@@ -455,6 +591,8 @@
                 document.getElementById('myAvatarText').style.display = 'none';
             } else {
                 document.getElementById('myAvatarText').innerText = currentUser[0].toUpperCase();
+                document.getElementById('myAvatarImg').style.display = 'none';
+                document.getElementById('myAvatarText').style.display = 'block';
             }
         };
 
@@ -477,11 +615,14 @@
 
             chatsToRender.forEach(friendID => {
                 const isGroup = groupsDB[friendID] !== undefined;
+                const isChannel = isGroup && groupsDB[friendID].type === 'channel';
+                
                 if (filter === 'Личные' && isGroup) return;
-                if (filter === 'Группы' && !isGroup) return;
+                if (filter === 'Группы' && (!isGroup || isChannel)) return;
+                if (filter === 'Каналы' && !isChannel) return;
 
                 let friendName = friendID === 'FAVORITES' ? 'Избранное' : (isGroup ? groupsDB[friendID].name : (usersDB[friendID]?.name || 'Юзер'));
-                let avatarTxt = friendID === 'FAVORITES' ? '★' : friendName[0].toUpperCase();
+                let avatarTxt = friendID === 'FAVORITES' ? '★' : (isChannel ? '📢' : (isGroup ? 'G' : friendName[0].toUpperCase()));
                 let isPinned = pinnedChats.includes(friendID);
                 
                 const div = document.createElement('div');
@@ -493,7 +634,6 @@
                 div.addEventListener('touchend', () => clearTimeout(pressTimer));
                 div.addEventListener('touchmove', () => clearTimeout(pressTimer));
 
-                // XSS ЗАЩИТА: Используем textContent для имени
                 const avatarDiv = document.createElement('div');
                 avatarDiv.className = 'avatar';
                 avatarDiv.textContent = avatarTxt;
@@ -507,7 +647,7 @@
                 
                 const msgDiv = document.createElement('div');
                 msgDiv.className = 'chat-last-msg';
-                msgDiv.textContent = 'Нажмите чтобы открыть';
+                msgDiv.textContent = isChannel ? 'Канал' : (isGroup ? 'Группа' : 'Нажмите чтобы открыть');
                 
                 infoDiv.appendChild(nameDiv);
                 infoDiv.appendChild(msgDiv);
@@ -547,21 +687,29 @@
             closeChatActionMenu();
         };
 
-        window.actionDeleteChat = function() {
-            remove(ref(db, `user_chats/${userID}/${actionTargetChatID}`));
-            closeChatActionMenu();
+        window.actionDeleteChat = async function() {
+            try {
+                await remove(ref(db, `user_chats/${userID}/${actionTargetChatID}`));
+                pinnedChats = pinnedChats.filter(id => id !== actionTargetChatID);
+                localStorage.setItem('voxPinned', JSON.stringify(pinnedChats));
+                closeChatActionMenu();
+                if (currentChatID === actionTargetChatID) closeChat();
+            } catch (e) { alert('Ошибка удаления: ' + e.message); }
         };
 
         window.openChat = function(friendID, friendName, isGroup) {
-            // ОТПИСЫВАЕМСЯ ОТ СТАРЫХ СЛУШАТЕЛЕЙ
             if (unsubscribeMessages) unsubscribeMessages();
             if (unsubscribeTyping) unsubscribeTyping();
             
             currentChatID = friendID;
             document.getElementById('headerName').innerText = friendName;
-            document.getElementById('headerAvatarText').innerText = friendName[0].toUpperCase();
+            document.getElementById('headerAvatarText').innerText = isGroup ? 'G' : friendName[0].toUpperCase();
             document.getElementById('sidebar').classList.add('hidden');
             document.getElementById('chatArea').classList.add('active');
+            
+            const isChannel = isGroup && groupsDB[friendID]?.type === 'channel';
+            document.getElementById('inviteBtn').style.display = (isGroup && !isChannel) ? 'block' : 'none';
+            
             renderChatList();
 
             const draftKey = `vox_draft_${[userID, friendID].sort().join('_')}`;
@@ -569,18 +717,16 @@
             const msgInput = document.getElementById('msgInput');
             if (savedDraft) { msgInput.value = savedDraft; } else { msgInput.value = ''; }
 
-            let chatID = friendID === 'FAVORITES' ? userID + '_FAVORITES' : [userID, friendID].sort().join('_');
+            let chatID = friendID === 'FAVORITES' ? userID + '_FAVORITES' : (isGroup ? friendID : [userID, friendID].sort().join('_'));
             
-            // СЛУШАТЕЛЬ СООБЩЕНИЙ
             unsubscribeMessages = onValue(ref(db, 'messages/' + chatID), (snapshot) => {
-                renderMessages(snapshot.val() || {});
+                renderMessages(snapshot.val() || {}, isGroup);
                 if (friendID !== 'FAVORITES') {
                     set(ref(db, 'read_status/' + chatID + '/' + userID), true);
                 }
             });
 
-            // СЛУШАТЕЛЬ ПЕЧАТИ (ТОЛЬКО ДЛЯ ЛИЧНЫХ ЧАТОВ)
-            if (friendID !== 'FAVORITES') {
+            if (!isGroup && friendID !== 'FAVORITES') {
                 unsubscribeTyping = onValue(ref(db, 'typing/' + friendID + '/' + userID), (snap) => {
                     const statusEl = document.getElementById('typingStatus');
                     if (snap.val() === 'typing') {
@@ -598,6 +744,8 @@
             if (unsubscribeTyping) unsubscribeTyping();
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('chatArea').classList.remove('active');
+            document.getElementById('inviteBtn').style.display = 'none';
+            document.getElementById('typingStatus').innerText = '';
             
             const msgInput = document.getElementById('msgInput');
             if (currentChatID) {
@@ -621,7 +769,7 @@
         });
         
         window.handleTyping = function() {
-            if (!currentChatID || currentChatID === 'FAVORITES') return;
+            if (!currentChatID || currentChatID === 'FAVORITES' || groupsDB[currentChatID]) return;
             const typingRef = ref(db, 'typing/' + userID + '/' + currentChatID);
             set(typingRef, 'typing');
             clearTimeout(typingTimeout);
@@ -630,17 +778,22 @@
             }, 2000);
         };
 
-        function renderMessages(msgsObj) {
+        function renderMessages(msgsObj, isGroup) {
             const container = document.getElementById('messagesContainer');
             container.innerHTML = '';
-            const msgs = Object.keys(msgsObj).map(key => ({ key, ...msgsObj[key] })).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            
+            if (typeof msgsObj !== 'object' || msgsObj === null) return;
+
+            const msgs = Object.keys(msgsObj)
+                .map(key => ({ key, ...msgsObj[key] }))
+                .filter(msg => msg.timestamp && msg.sender && msg.type && !deletedMessagesLocally.includes(msg.key))
+                .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             
             msgs.forEach(msg => {
                 const div = document.createElement('div');
                 const isMine = msg.sender === userID;
                 div.className = `message ${isMine ? 'outgoing' : 'incoming'}`;
                 
-                // РЕАЛЬНЫЕ ГАЛОЧКИ ПРОЧТЕНИЯ
                 let checkmark = '';
                 if (isMine) {
                     if (currentChatID !== 'FAVORITES') {
@@ -653,10 +806,18 @@
                 const bubble = document.createElement('div');
                 bubble.className = 'msg-bubble';
 
+                if (isGroup && !isMine) {
+                    const senderName = document.createElement('div');
+                    senderName.className = 'sender-name';
+                    senderName.textContent = usersDB[msg.sender]?.name || 'Юзер';
+                    bubble.appendChild(senderName);
+                }
+
                 if (msg.type === 'image') {
                     div.classList.add('image');
                     const img = document.createElement('img');
                     img.src = msg.text;
+                    img.alt = 'Изображение';
                     bubble.appendChild(img);
                 } else if (msg.type === 'voice') {
                     const audio = document.createElement('audio');
@@ -665,15 +826,17 @@
                     audio.style.maxWidth = '200px';
                     bubble.appendChild(audio);
                 } else {
-                    // XSS ЗАЩИТА
                     const textSpan = document.createElement('span');
-                    textSpan.textContent = msg.text;
+                    textSpan.textContent = msg.text || '';
                     bubble.appendChild(textSpan);
                 }
 
                 const timeDiv = document.createElement('div');
                 timeDiv.className = 'msg-time';
-                timeDiv.innerHTML = `${msg.time} ${checkmark}`;
+                timeDiv.textContent = msg.time || ''; 
+                const checkSpan = document.createElement('span');
+                checkSpan.innerHTML = checkmark;
+                timeDiv.appendChild(checkSpan);
                 bubble.appendChild(timeDiv);
 
                 div.appendChild(bubble);
@@ -692,31 +855,41 @@
         };
         
         window.ctxReply = function() {
-            if (ctxMsgData) {
-                document.getElementById('msgInput').value = `[Ответ: ${ctxMsgData.text.substring(0, 15)}...] `;
-                document.getElementById('msgInput').focus();
+            const input = document.getElementById('msgInput');
+            if (ctxMsgData && input) {
+                const replyText = ctxMsgData.type === 'text' ? (ctxMsgData.text || '').substring(0, 15) : '[Медиа]';
+                input.value = `[Ответ: ${replyText}...] `;
+                input.focus();
             }
             closeCtxMenu();
         };
         
         window.ctxForward = function() {
             closeCtxMenu();
+            if (!ctxMsgData) return;
+
             const list = document.getElementById('forwardList');
             list.innerHTML = '';
             
             Object.keys(chatData).forEach(fid => {
                 if (fid === currentChatID) return;
-                let fname = fid === 'FAVORITES' ? 'Избранное' : (usersDB[fid]?.name || 'Юзер');
+                
+                const targetIsChannel = groupsDB[fid] && groupsDB[fid].type === 'channel';
+                if (targetIsChannel && groupsDB[fid].creator !== userID) return;
+
+                let fname = fid === 'FAVORITES' ? 'Избранное' : (groupsDB[fid] ? groupsDB[fid].name : (usersDB[fid]?.name || 'Юзер'));
                 
                 const btn = document.createElement('button');
                 btn.className = 'menu-btn';
                 btn.innerText = fname;
                 btn.onclick = async () => {
-                    let chatID2 = fid === 'FAVORITES' ? userID + '_FAVORITES' : [userID, fid].sort().join('_');
-                    await push(ref(db, 'messages/' + chatID2), {
-                        sender: userID, text: ctxMsgData.text, type: ctxMsgData.type, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp(), forwarded: true
-                    });
-                    closeForwardMenu();
+                    try {
+                        let chatID2 = fid === 'FAVORITES' ? userID + '_FAVORITES' : (groupsDB[fid] ? fid : [userID, fid].sort().join('_'));
+                        await push(ref(db, 'messages/' + chatID2), {
+                            sender: userID, text: ctxMsgData.text, type: ctxMsgData.type, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp(), forwarded: true
+                        });
+                        closeForwardMenu();
+                    } catch(e) { alert('Ошибка пересылки: ' + e.message); }
                 };
                 list.appendChild(btn);
             });
@@ -727,32 +900,56 @@
             if (!e || e.target.id === 'forwardMenu' || e.type === 'click') document.getElementById('forwardMenu').classList.remove('active');
         };
         
-        window.ctxDelete = function() {
-            if (ctxMsgData.sender !== userID) {
-                alert('Вы можете удалять только свои сообщения!');
+        // УДАЛЕНИЕ У СЕБЯ (ЛОКАЛЬНО)
+        window.ctxDeleteLocal = function() {
+            if (!ctxMsgKey) return;
+            deletedMessagesLocally.push(ctxMsgKey);
+            localStorage.setItem('voxDeletedLocal', JSON.stringify(deletedMessagesLocally));
+            
+            if (currentChatID) {
+                let chatID = currentChatID === 'FAVORITES' ? userID + '_FAVORITES' : (groupsDB[currentChatID] ? currentChatID : [userID, currentChatID].sort().join('_'));
+                get(ref(db, 'messages/' + chatID)).then((snap) => {
+                    if (snap.exists()) renderMessages(snap.val(), groupsDB[currentChatID] !== undefined);
+                }).catch(e => console.error(e));
+            }
+            closeCtxMenu();
+        };
+
+        // УДАЛЕНИЕ У ВСЕХ (ГЛОБАЛЬНО)
+        window.ctxDeleteGlobal = async function() {
+            if (!ctxMsgData || ctxMsgData.sender !== userID) {
+                alert('Вы можете удалять у всех только свои сообщения!');
                 closeCtxMenu();
                 return;
             }
-            let chatID = currentChatID === 'FAVORITES' ? userID + '_FAVORITES' : [userID, currentChatID].sort().join('_');
-            update(ref(db, `messages/${chatID}/${ctxMsgKey}`), { text: 'Удалено', type: 'text' });
-            closeCtxMenu();
+            try {
+                let chatID = currentChatID === 'FAVORITES' ? userID + '_FAVORITES' : (groupsDB[currentChatID] ? currentChatID : [userID, currentChatID].sort().join('_'));
+                await update(ref(db, `messages/${chatID}/${ctxMsgKey}`), { text: 'Удалено', type: 'text' });
+                closeCtxMenu();
+            } catch (e) { alert('Ошибка удаления: ' + e.message); }
         };
 
         window.sendMessage = async function() {
             if (!currentChatID || isSending) return;
+            
+            if (groupsDB[currentChatID] && groupsDB[currentChatID].type === 'channel' && groupsDB[currentChatID].creator !== userID) {
+                return alert('В этом канале писать может только создатель!');
+            }
+
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if (!text) return;
             
             isSending = true;
-            let chatID = currentChatID === 'FAVORITES' ? userID + '_FAVORITES' : [userID, currentChatID].sort().join('_');
+            const chatAtSend = currentChatID;
+            let chatID = chatAtSend === 'FAVORITES' ? userID + '_FAVORITES' : (groupsDB[chatAtSend] ? chatAtSend : [userID, chatAtSend].sort().join('_'));
             
             try {
                 await push(ref(db, 'messages/' + chatID), {
                     sender: userID, text: text, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp(), type: 'text'
                 });
-                input.value = '';
-                localStorage.removeItem(`vox_draft_${[userID, currentChatID].sort().join('_')}`);
+                if (currentChatID === chatAtSend) input.value = '';
+                localStorage.removeItem(`vox_draft_${[userID, chatAtSend].sort().join('_')}`);
             } catch (e) { alert('Ошибка: ' + e.message); } 
             finally { isSending = false; }
         };
@@ -764,15 +961,24 @@
             const file = event.target.files[0];
             if (!file || !currentChatID) return;
             if (file.size > 500000) { alert('Файл слишком большой (макс 500KB)'); return; }
+            if (!file.type.startsWith('image/')) { alert('Выберите изображение'); return; }
+
+            if (groupsDB[currentChatID] && groupsDB[currentChatID].type === 'channel' && groupsDB[currentChatID].creator !== userID) {
+                return alert('В этом канале писать может только создатель!');
+            }
             
             const targetChat = currentChatID;
+            const senderUid = userID;
             const reader = new FileReader();
             reader.onload = async function(e) {
-                let chatID = targetChat === 'FAVORITES' ? userID + '_FAVORITES' : [userID, targetChat].sort().join('_');
-                await push(ref(db, 'messages/' + chatID), {
-                    sender: userID, text: e.target.result, type: 'image', time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp()
-                });
+                try {
+                    let chatID = targetChat === 'FAVORITES' ? senderUid + '_FAVORITES' : (groupsDB[targetChat] ? targetChat : [senderUid, targetChat].sort().join('_'));
+                    await push(ref(db, 'messages/' + chatID), {
+                        sender: senderUid, text: e.target.result, type: 'image', time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp()
+                    });
+                } catch(err) { alert('Ошибка отправки фото: ' + err.message); }
             };
+            reader.onerror = function() { alert('Ошибка чтения файла'); };
             reader.readAsDataURL(file);
             event.target.value = '';
         };
@@ -781,12 +987,21 @@
             if (isRecording) { stopVoiceRecord(); return; }
             if (!currentChatID) return alert('Выберите чат!');
 
+            if (groupsDB[currentChatID] && groupsDB[currentChatID].type === 'channel' && groupsDB[currentChatID].creator !== userID) {
+                return alert('В этом канале писать может только создатель!');
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                return alert('Ваш браузер не поддерживает запись голоса.');
+            }
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 audioChunks = [];
 
                 const targetChat = currentChatID;
+                const senderUid = userID;
 
                 mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
                 mediaRecorder.onstop = () => {
@@ -794,10 +1009,12 @@
                     const reader = new FileReader();
                     reader.readAsDataURL(audioBlob);
                     reader.onloadend = async () => {
-                        let chatID = targetChat === 'FAVORITES' ? userID + '_FAVORITES' : [userID, targetChat].sort().join('_');
-                        await push(ref(db, 'messages/' + chatID), {
-                            sender: userID, text: reader.result, type: 'voice', time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp()
-                        });
+                        try {
+                            let chatID = targetChat === 'FAVORITES' ? senderUid + '_FAVORITES' : (groupsDB[targetChat] ? targetChat : [senderUid, targetChat].sort().join('_'));
+                            await push(ref(db, 'messages/' + chatID), {
+                                sender: senderUid, text: reader.result, type: 'voice', time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp()
+                            });
+                        } catch(err) { alert('Ошибка отправки голосового: ' + err.message); }
                     };
                 };
 
@@ -826,6 +1043,7 @@
                 .replace(/\s+/g, '').replace(/[^A-Z0-9\-]/g, '');
             
             const resultEl = document.getElementById('searchResult');
+            resultEl.innerHTML = '';
             if (!queryID) return;
 
             let foundUid = null;
@@ -834,36 +1052,57 @@
             }
 
             if (foundUid) {
-                resultEl.innerHTML = `<b>${usersDB[foundUid].name}</b><br><button class="action-btn btn-primary" onclick="addFriend('${foundUid}')" style="margin-top:10px;">Написать</button>`;
+                const nameStrong = document.createElement('b');
+                nameStrong.textContent = usersDB[foundUid].name;
+                
+                const btn = document.createElement('button');
+                btn.className = 'action-btn btn-primary';
+                btn.style.marginTop = '10px';
+                btn.textContent = 'Написать';
+                btn.onclick = () => addFriend(foundUid);
+
+                resultEl.appendChild(nameStrong);
+                resultEl.appendChild(document.createElement('br'));
+                resultEl.appendChild(btn);
             } else {
-                resultEl.innerText = 'Пользователь не найден.';
+                resultEl.textContent = 'Пользователь не найден.';
                 resultEl.style.color = 'var(--danger)';
             }
         };
 
         window.addFriend = async function(friendID) {
-            await set(ref(db, `user_chats/${userID}/${friendID}`), true);
-            await set(ref(db, `user_chats/${friendID}/${userID}`), true);
-            closeModal('add-friend-modal');
-            openChat(friendID, usersDB[friendID].name);
+            try {
+                await set(ref(db, `user_chats/${userID}/${friendID}`), true);
+                await set(ref(db, `user_chats/${friendID}/${userID}`), true);
+                closeModal('add-friend-modal');
+                openChat(friendID, usersDB[friendID].name);
+            } catch(e) { alert('Ошибка добавления: ' + e.message); }
         };
 
         window.openProfileModal = function() {
             if (!currentChatID) return;
-            const friendData = usersDB[currentChatID] || {};
+            const friendData = usersDB[currentChatID] || groupsDB[currentChatID] || {};
             document.getElementById('viewProfileName').innerText = friendData.name || 'Собеседник';
             document.getElementById('viewProfileId').innerText = friendData.voxId || currentChatID;
+            document.getElementById('viewProfileStatus').innerText = friendData.status || 'был(а) недавно';
             openModal('view-profile-modal');
         };
 
-        window.openEditProfile = function() { openModal('edit-profile-modal'); };
+        window.openEditProfile = function() {
+            const myData = usersDB[userID] || {};
+            document.getElementById('editNameInput').value = myData.name || '';
+            document.getElementById('editStatusInput').value = myData.status || '';
+            openModal('edit-profile-modal');
+        };
+        
         window.saveProfile = async function() {
             const newName = document.getElementById('editNameInput').value.trim();
             const newStatus = document.getElementById('editStatusInput').value.trim();
-            if (newName) {
+            if (!newName) return alert('Имя не может быть пустым!');
+            try {
                 await update(ref(db, 'users/' + userID), { name: newName, status: newStatus });
                 closeModal('edit-profile-modal');
-            }
+            } catch(e) { alert('Ошибка сохранения: ' + e.message); }
         };
 
         window.openModal = function(id) { document.getElementById(id).classList.add('active'); };
@@ -871,11 +1110,23 @@
         window.overlayClick = function(e, id) { if (e.target.id === id) closeModal(id); };
         
         window.openLogoutModal = function() { openModal('logout-modal'); };
-        window.confirmLogout = async function() { await signOut(auth); location.reload(); };
+        window.confirmLogout = async function() { 
+            if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribeTyping) unsubscribeTyping();
+            await signOut(auth); 
+            location.reload(); 
+        };
         
         window.copyMyId = function() {
-            navigator.clipboard.writeText(usersDB[userID].voxId);
-            alert('VOX TAG скопирован!');
+            if (usersDB && usersDB[userID] && usersDB[userID].voxId) {
+                navigator.clipboard.writeText(usersDB[userID].voxId).then(() => {
+                    alert('VOX TAG скопирован: ' + usersDB[userID].voxId);
+                }).catch(() => {
+                    alert('Ошибка копирования');
+                });
+            } else {
+                alert('Ошибка: профиль еще не загружен.');
+            }
         };
 
         window.changeTheme = function(theme) {
@@ -885,7 +1136,8 @@
         };
 
         window.addEventListener('load', () => {
-            const savedTheme = localStorage.getItem('voxTheme') || 'default';
+            let savedTheme = localStorage.getItem('voxTheme') || 'default';
+            if (!['default', 'light', 'cyberpunk', 'pink'].includes(savedTheme)) savedTheme = 'default';
             changeTheme(savedTheme);
         });
     </script>
