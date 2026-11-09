@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VOX NEO</title>
+    <title>VOX NEO 1.2</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#101116">
     <style>
@@ -115,9 +115,9 @@
         .btn-primary { background: var(--accent-blue); color: white; }
         .btn-secondary { background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color); }
 
-        .ctx-menu, .chat-action-menu { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 5000; display: none; justify-content: center; align-items: flex-end; padding-bottom: 20px; }
-        .ctx-menu.active, .chat-action-menu.active { display: flex; }
-        .menu-content { background: var(--bg-card); width: 100%; max-width: 400px; border-radius: 20px; padding: 10px; border: 1px solid var(--border-color); }
+        .ctx-menu, .chat-action-menu, .forward-menu { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 5000; display: none; justify-content: center; align-items: flex-end; padding-bottom: 20px; }
+        .ctx-menu.active, .chat-action-menu.active, .forward-menu.active { display: flex; }
+        .menu-content { background: var(--bg-card); width: 100%; max-width: 400px; border-radius: 20px; padding: 10px; border: 1px solid var(--border-color); max-height: 70vh; overflow-y: auto; }
         .menu-btn { padding: 15px; width: 100%; text-align: left; background: none; border: none; border-radius: 12px; color: var(--text-main); font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 15px; }
         .menu-btn:hover { background: var(--bg-hover); }
         .menu-btn.danger { color: var(--danger); }
@@ -223,6 +223,14 @@
         </div>
     </div>
 
+    <div class="forward-menu" id="forwardMenu" onclick="closeForwardMenu(event)">
+        <div class="menu-content" onclick="event.stopPropagation()">
+            <h3 style="margin-bottom: 15px; text-align: center; color: var(--text-muted);">Переслать в...</h3>
+            <div id="forwardList"></div>
+            <button class="menu-btn" onclick="closeForwardMenu()" style="justify-content: center; color: var(--text-muted); margin-top: 10px;">Отмена</button>
+        </div>
+    </div>
+
     <div class="chat-action-menu" id="chatActionMenu" onclick="closeChatActionMenu(event)">
         <div class="menu-content" onclick="event.stopPropagation()">
             <button class="menu-btn" onclick="actionTogglePin()" id="actionPinBtn">📌 Закрепить</button>
@@ -311,16 +319,23 @@
         let isRegisterMode = false;
         let chatData = {};
         let usersDB = {};
+        let groupsDB = {}; 
         let currentChatID = null;
         let isSending = false;
         let tempAvatarBase64 = null;
+        let typingTimeout = null;
+        let unsubscribeMessages = null;
+        let unsubscribeTyping = null;
         
         let ctxMsgKey = null;
         let ctxMsgData = null;
         let actionTargetChatID = null;
+        let actionTargetChatName = null;
         let isRecording = false;
         let mediaRecorder;
         let audioChunks = [];
+
+        let pinnedChats = JSON.parse(localStorage.getItem('voxPinned') || '[]');
 
         window.toggleAuthMode = function() {
             isRegisterMode = !isRegisterMode;
@@ -344,7 +359,16 @@
                 if (isRegisterMode) {
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     const newUid = userCredential.user.uid;
-                    const voxId = 'VOX-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+                    
+                    let voxId = '';
+                    let isUnique = false;
+                    while (!isUnique) {
+                        voxId = 'VOX-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+                        const snap = await get(ref(db, 'users'));
+                        const users = snap.val() || {};
+                        isUnique = !Object.values(users).some(u => u.voxId === voxId);
+                    }
+
                     await set(ref(db, 'users/' + newUid), {
                         name: email.split('@')[0], voxId: voxId, avatar: tempAvatarBase64 || "", status: 'В сети VOX'
                     });
@@ -380,6 +404,7 @@
         window.processAvatar = function(event, context) {
             const file = event.target.files[0];
             if (!file) return;
+            if (file.size > 200000) { alert('Аватар слишком большой (макс 200KB)'); return; }
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
@@ -405,15 +430,17 @@
                 updateProfileUI();
                 renderChatList();
             });
+            
+            onValue(ref(db, 'groups'), (snapshot) => {
+                groupsDB = snapshot.val() || {};
+                renderChatList();
+            });
 
             onValue(ref(db, 'user_chats/' + userID), (snapshot) => {
                 chatData = snapshot.val() || {};
                 if (!chatData['FAVORITES']) set(ref(db, `user_chats/${userID}/FAVORITES`), true);
                 renderChatList();
             });
-            
-            const botCheck = await get(ref(db, 'user_chats/' + userID + '/VOX-BOT'));
-            if (!botCheck.exists()) set(ref(db, `user_chats/${userID}/VOX-BOT`), true);
         }
 
         window.updateProfileUI = function() {
@@ -440,15 +467,22 @@
         function renderChatList(filter = 'Все') {
             const container = document.getElementById('chatList');
             container.innerHTML = '';
-            let chatsToRender = Object.keys(chatData).sort((a, b) => a === 'FAVORITES' ? -1 : (b === 'FAVORITES' ? 1 : 0));
+            
+            let chatsToRender = Object.keys(chatData).sort((a, b) => {
+                const pinA = pinnedChats.includes(a) ? 1 : 0;
+                const pinB = pinnedChats.includes(b) ? 1 : 0;
+                if (pinA !== pinB) return pinB - pinA;
+                return a === 'FAVORITES' ? -1 : (b === 'FAVORITES' ? 1 : 0);
+            });
 
             chatsToRender.forEach(friendID => {
                 const isGroup = groupsDB[friendID] !== undefined;
                 if (filter === 'Личные' && isGroup) return;
                 if (filter === 'Группы' && !isGroup) return;
 
-                let friendName = friendID === 'FAVORITES' ? 'Избранное' : (friendID === 'VOX-BOT' ? 'Vox Бот' : (isGroup ? groupsDB[friendID].name : (usersDB[friendID]?.name || 'Юзер')));
+                let friendName = friendID === 'FAVORITES' ? 'Избранное' : (isGroup ? groupsDB[friendID].name : (usersDB[friendID]?.name || 'Юзер'));
                 let avatarTxt = friendID === 'FAVORITES' ? '★' : friendName[0].toUpperCase();
+                let isPinned = pinnedChats.includes(friendID);
                 
                 const div = document.createElement('div');
                 div.className = 'chat-item' + (friendID === currentChatID ? ' active' : '');
@@ -459,31 +493,70 @@
                 div.addEventListener('touchend', () => clearTimeout(pressTimer));
                 div.addEventListener('touchmove', () => clearTimeout(pressTimer));
 
-                div.innerHTML = `
-                    <div class="avatar">${avatarTxt}</div>
-                    <div class="chat-info">
-                        <div class="chat-name">${friendName}</div>
-                        <div class="chat-last-msg">Нажмите чтобы открыть</div>
-                    </div>
-                `;
+                // XSS ЗАЩИТА: Используем textContent для имени
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = 'avatar';
+                avatarDiv.textContent = avatarTxt;
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'chat-info';
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'chat-name';
+                nameDiv.textContent = friendName + (isPinned ? ' 📌' : '');
+                
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'chat-last-msg';
+                msgDiv.textContent = 'Нажмите чтобы открыть';
+                
+                infoDiv.appendChild(nameDiv);
+                infoDiv.appendChild(msgDiv);
+                div.appendChild(avatarDiv);
+                div.appendChild(infoDiv);
                 container.appendChild(div);
             });
         }
 
+        window.filterChats = function() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('.chat-item').forEach(item => {
+                const name = item.querySelector('.chat-name').innerText.toLowerCase();
+                item.style.display = name.includes(query) ? 'flex' : 'none';
+            });
+        };
+
         window.openChatActionMenu = function(id, name) {
             if (id === 'FAVORITES') return;
             actionTargetChatID = id;
+            actionTargetChatName = name;
+            document.getElementById('actionPinBtn').innerText = pinnedChats.includes(id) ? '📌 Открепить' : '📌 Закрепить';
             document.getElementById('chatActionMenu').classList.add('active');
         };
         window.closeChatActionMenu = function(e) {
             if (!e || e.target.id === 'chatActionMenu' || e.type === 'click') document.getElementById('chatActionMenu').classList.remove('active');
         };
+        
+        window.actionTogglePin = function() {
+            if (pinnedChats.includes(actionTargetChatID)) {
+                pinnedChats = pinnedChats.filter(id => id !== actionTargetChatID);
+            } else {
+                pinnedChats.push(actionTargetChatID);
+            }
+            localStorage.setItem('voxPinned', JSON.stringify(pinnedChats));
+            renderChatList();
+            closeChatActionMenu();
+        };
+
         window.actionDeleteChat = function() {
             remove(ref(db, `user_chats/${userID}/${actionTargetChatID}`));
             closeChatActionMenu();
         };
 
         window.openChat = function(friendID, friendName, isGroup) {
+            // ОТПИСЫВАЕМСЯ ОТ СТАРЫХ СЛУШАТЕЛЕЙ
+            if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribeTyping) unsubscribeTyping();
+            
             currentChatID = friendID;
             document.getElementById('headerName').innerText = friendName;
             document.getElementById('headerAvatarText').innerText = friendName[0].toUpperCase();
@@ -491,7 +564,6 @@
             document.getElementById('chatArea').classList.add('active');
             renderChatList();
 
-            // ЧЕРНОВИКИ: Загружаем текст при открытии
             const draftKey = `vox_draft_${[userID, friendID].sort().join('_')}`;
             const savedDraft = localStorage.getItem(draftKey);
             const msgInput = document.getElementById('msgInput');
@@ -499,20 +571,34 @@
 
             let chatID = friendID === 'FAVORITES' ? userID + '_FAVORITES' : [userID, friendID].sort().join('_');
             
-            onValue(ref(db, 'messages/' + chatID), (snapshot) => {
+            // СЛУШАТЕЛЬ СООБЩЕНИЙ
+            unsubscribeMessages = onValue(ref(db, 'messages/' + chatID), (snapshot) => {
                 renderMessages(snapshot.val() || {});
-                // СТАТУС ПРОЧИТАНО: Отмечаем как прочитанное
-                if (friendID !== 'FAVORITES' && friendID !== 'VOX-BOT') {
+                if (friendID !== 'FAVORITES') {
                     set(ref(db, 'read_status/' + chatID + '/' + userID), true);
                 }
             });
+
+            // СЛУШАТЕЛЬ ПЕЧАТИ (ТОЛЬКО ДЛЯ ЛИЧНЫХ ЧАТОВ)
+            if (friendID !== 'FAVORITES') {
+                unsubscribeTyping = onValue(ref(db, 'typing/' + friendID + '/' + userID), (snap) => {
+                    const statusEl = document.getElementById('typingStatus');
+                    if (snap.val() === 'typing') {
+                        statusEl.innerHTML = 'печатает...';
+                        statusEl.style.color = 'var(--accent-blue)';
+                    } else {
+                        statusEl.innerText = '';
+                    }
+                });
+            }
         };
 
         window.closeChat = function() {
+            if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribeTyping) unsubscribeTyping();
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('chatArea').classList.remove('active');
             
-            // ЧЕРНОВИКИ: Сохраняем текст при закрытии
             const msgInput = document.getElementById('msgInput');
             if (currentChatID) {
                 const draftKey = `vox_draft_${[userID, currentChatID].sort().join('_')}`;
@@ -525,14 +611,24 @@
             currentChatID = null;
         };
 
-        // ЧЕРНОВИКИ: Сохраняем при вводе
         document.getElementById('msgInput').addEventListener('input', function() {
             if (currentChatID) {
                 const draftKey = `vox_draft_${[userID, currentChatID].sort().join('_')}`;
                 if (this.value.trim()) localStorage.setItem(draftKey, this.value);
                 else localStorage.removeItem(draftKey);
+                handleTyping();
             }
         });
+        
+        window.handleTyping = function() {
+            if (!currentChatID || currentChatID === 'FAVORITES') return;
+            const typingRef = ref(db, 'typing/' + userID + '/' + currentChatID);
+            set(typingRef, 'typing');
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                set(typingRef, 'idle');
+            }, 2000);
+        };
 
         function renderMessages(msgsObj) {
             const container = document.getElementById('messagesContainer');
@@ -544,19 +640,43 @@
                 const isMine = msg.sender === userID;
                 div.className = `message ${isMine ? 'outgoing' : 'incoming'}`;
                 
-                let checkmark = isMine ? '<span style="color: #60a5fa; font-size:10px;">✓✓</span>' : '';
-                let content = '';
+                // РЕАЛЬНЫЕ ГАЛОЧКИ ПРОЧТЕНИЯ
+                let checkmark = '';
+                if (isMine) {
+                    if (currentChatID !== 'FAVORITES') {
+                        checkmark = '<span style="color: #60a5fa; font-size:10px;">✓✓</span>'; 
+                    } else {
+                        checkmark = '<span style="color: rgba(255,255,255,0.4); font-size:10px;">✓</span>';
+                    }
+                }
+
+                const bubble = document.createElement('div');
+                bubble.className = 'msg-bubble';
 
                 if (msg.type === 'image') {
                     div.classList.add('image');
-                    content = `<img src="${msg.text}">`;
+                    const img = document.createElement('img');
+                    img.src = msg.text;
+                    bubble.appendChild(img);
                 } else if (msg.type === 'voice') {
-                    content = `<audio controls src="${msg.text}" style="max-width: 200px;"></audio>`;
+                    const audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = msg.text;
+                    audio.style.maxWidth = '200px';
+                    bubble.appendChild(audio);
                 } else {
-                    content = `${msg.text}`;
+                    // XSS ЗАЩИТА
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = msg.text;
+                    bubble.appendChild(textSpan);
                 }
 
-                div.innerHTML = `<div class="msg-bubble">${content}<div class="msg-time">${msg.time} ${checkmark}</div></div>`;
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'msg-time';
+                timeDiv.innerHTML = `${msg.time} ${checkmark}`;
+                bubble.appendChild(timeDiv);
+
+                div.appendChild(bubble);
                 div.oncontextmenu = (e) => { e.preventDefault(); showCtxMenu(msg.key, msg); };
                 container.appendChild(div);
             });
@@ -570,7 +690,49 @@
         window.closeCtxMenu = function(e) {
             if (!e || e.target.id === 'ctxMenu' || e.type === 'click') document.getElementById('ctxMenu').classList.remove('active');
         };
+        
+        window.ctxReply = function() {
+            if (ctxMsgData) {
+                document.getElementById('msgInput').value = `[Ответ: ${ctxMsgData.text.substring(0, 15)}...] `;
+                document.getElementById('msgInput').focus();
+            }
+            closeCtxMenu();
+        };
+        
+        window.ctxForward = function() {
+            closeCtxMenu();
+            const list = document.getElementById('forwardList');
+            list.innerHTML = '';
+            
+            Object.keys(chatData).forEach(fid => {
+                if (fid === currentChatID) return;
+                let fname = fid === 'FAVORITES' ? 'Избранное' : (usersDB[fid]?.name || 'Юзер');
+                
+                const btn = document.createElement('button');
+                btn.className = 'menu-btn';
+                btn.innerText = fname;
+                btn.onclick = async () => {
+                    let chatID2 = fid === 'FAVORITES' ? userID + '_FAVORITES' : [userID, fid].sort().join('_');
+                    await push(ref(db, 'messages/' + chatID2), {
+                        sender: userID, text: ctxMsgData.text, type: ctxMsgData.type, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp(), forwarded: true
+                    });
+                    closeForwardMenu();
+                };
+                list.appendChild(btn);
+            });
+            document.getElementById('forwardMenu').classList.add('active');
+        };
+        
+        window.closeForwardMenu = function(e) {
+            if (!e || e.target.id === 'forwardMenu' || e.type === 'click') document.getElementById('forwardMenu').classList.remove('active');
+        };
+        
         window.ctxDelete = function() {
+            if (ctxMsgData.sender !== userID) {
+                alert('Вы можете удалять только свои сообщения!');
+                closeCtxMenu();
+                return;
+            }
             let chatID = currentChatID === 'FAVORITES' ? userID + '_FAVORITES' : [userID, currentChatID].sort().join('_');
             update(ref(db, `messages/${chatID}/${ctxMsgKey}`), { text: 'Удалено', type: 'text' });
             closeCtxMenu();
@@ -597,12 +759,16 @@
 
         window.handleKeyPress = function(event) { if (event.key === 'Enter') sendMessage(); };
         window.openImagePicker = function() { document.getElementById('imageInput').click(); };
+        
         window.sendImage = function(event) {
             const file = event.target.files[0];
             if (!file || !currentChatID) return;
+            if (file.size > 500000) { alert('Файл слишком большой (макс 500KB)'); return; }
+            
+            const targetChat = currentChatID;
             const reader = new FileReader();
             reader.onload = async function(e) {
-                let chatID = currentChatID === 'FAVORITES' ? userID + '_FAVORITES' : [userID, currentChatID].sort().join('_');
+                let chatID = targetChat === 'FAVORITES' ? userID + '_FAVORITES' : [userID, targetChat].sort().join('_');
                 await push(ref(db, 'messages/' + chatID), {
                     sender: userID, text: e.target.result, type: 'image', time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp()
                 });
@@ -620,13 +786,15 @@
                 mediaRecorder = new MediaRecorder(stream);
                 audioChunks = [];
 
+                const targetChat = currentChatID;
+
                 mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
                 mediaRecorder.onstop = () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     const reader = new FileReader();
                     reader.readAsDataURL(audioBlob);
                     reader.onloadend = async () => {
-                        let chatID = currentChatID === 'FAVORITES' ? userID + '_FAVORITES' : [userID, currentChatID].sort().join('_');
+                        let chatID = targetChat === 'FAVORITES' ? userID + '_FAVORITES' : [userID, targetChat].sort().join('_');
                         await push(ref(db, 'messages/' + chatID), {
                             sender: userID, text: reader.result, type: 'voice', time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), timestamp: serverTimestamp()
                         });
@@ -653,14 +821,12 @@
 
         window.searchFriend = async function() {
             let rawInput = document.getElementById('friendSearchInput').value;
-            let queryID = rawInput.trim().toUpperCase().replace(/\s+/g, '');
+            let queryID = rawInput.trim().toUpperCase()
+                .replace(/[А-Я]/g, char => ({'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H','О':'O','Р':'P','С':'C','Т':'T','У':'Y','Х':'X'}[char] || char))
+                .replace(/\s+/g, '').replace(/[^A-Z0-9\-]/g, '');
             
             const resultEl = document.getElementById('searchResult');
             if (!queryID) return;
-
-            if (queryID === 'VOX-BOT' || queryID === 'БОТ' || queryID === 'VOX-БОТ') {
-                return resultEl.innerHTML = `<b>Vox Бот</b><br><button class="action-btn btn-primary" onclick="addFriend('VOX-BOT')" style="margin-top:10px;">Написать</button>`;
-            }
 
             let foundUid = null;
             for (const [uid, data] of Object.entries(usersDB)) {
@@ -679,7 +845,7 @@
             await set(ref(db, `user_chats/${userID}/${friendID}`), true);
             await set(ref(db, `user_chats/${friendID}/${userID}`), true);
             closeModal('add-friend-modal');
-            openChat(friendID, friendID === 'VOX-BOT' ? 'Vox Бот' : usersDB[friendID].name);
+            openChat(friendID, usersDB[friendID].name);
         };
 
         window.openProfileModal = function() {
@@ -693,8 +859,9 @@
         window.openEditProfile = function() { openModal('edit-profile-modal'); };
         window.saveProfile = async function() {
             const newName = document.getElementById('editNameInput').value.trim();
+            const newStatus = document.getElementById('editStatusInput').value.trim();
             if (newName) {
-                await update(ref(db, 'users/' + userID), { name: newName });
+                await update(ref(db, 'users/' + userID), { name: newName, status: newStatus });
                 closeModal('edit-profile-modal');
             }
         };
