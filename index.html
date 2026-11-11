@@ -161,7 +161,8 @@
 
         .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; }
 
-        .bottom-nav { display: none; position: absolute; bottom: 0; left: 0; right: 0; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border-top: 1px solid var(--glass-border); padding: 6px 0 max(6px, env(safe-area-inset-bottom)); z-index: 100; }
+        .bottom-nav { display: none; position: absolute; bottom: 0; left: 0; right: 0; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border-top: 1px solid var(--glass-border); padding: 6px 0 max(6px, env(safe-area-inset-bottom)); z-index: 100; transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
+        .bottom-nav.hidden { transform: translateY(100%); }
         .bnav-item { flex: 1; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--text-muted); font-size: 10px; padding: 6px 0; transition: 0.2s; }
         .bnav-item.active { color: var(--accent-blue); }
         .bnav-item:active { transform: scale(0.9); }
@@ -176,6 +177,7 @@
             .back-btn { display: flex; }
             .message { max-width: 85%; }
             .bottom-nav { display: flex; }
+            .sidebar.hidden ~ .bottom-nav { display: none; }
         }
     </style>
 </head>
@@ -601,12 +603,10 @@
                 try {
                     let profileSnap = await get(ref(db, 'users/' + userID));
                     if (!profileSnap.exists()) { 
-                        // Если профиля нет, создаем его
                         const voxId = 'VOX-' + Math.random().toString(36).substring(2, 6).toUpperCase();
                         await set(ref(db, 'users/' + userID), { name: 'Гость', voxId: voxId, avatar: "", status: 'В сети VOX' });
                         profileSnap = await get(ref(db, 'users/' + userID));
                     }
-                    // Если нет voxId, генерируем
                     if (!profileSnap.val().voxId) {
                         const newVoxId = 'VOX-' + Math.random().toString(36).substring(2, 6).toUpperCase();
                         await update(ref(db, 'users/' + userID), { voxId: newVoxId });
@@ -703,7 +703,9 @@
                 unsubscribeGroups = onValue(ref(db, 'groups'), (snapshot) => {
                     groupsDB = snapshot.val() || {};
                     renderChatList();
-                }, (error) => console.error("Ошибка groups:", error));
+                }, (error) => {
+                    console.warn("Ошибка groups (проверьте правила Firebase):", error.message);
+                });
 
                 unsubscribeUserChats = onValue(ref(db, 'user_chats/' + userID), (snapshot) => {
                     chatData = snapshot.val() || {};
@@ -827,6 +829,9 @@
             document.getElementById('sidebar').classList.add('hidden');
             document.getElementById('chatArea').classList.add('active');
             
+            const bottomNav = document.getElementById('bottomNav');
+            if (bottomNav) bottomNav.classList.add('hidden');
+
             const isChannel = isGroup && groupsDB[friendID]?.type === 'channel';
             const isCreator = isGroup && groupsDB[friendID]?.creator === userID;
             
@@ -870,6 +875,9 @@
             document.getElementById('manageBtn').style.display = 'none';
             document.getElementById('typingStatus').innerText = '';
             
+            const bottomNav = document.getElementById('bottomNav');
+            if (bottomNav) bottomNav.classList.remove('hidden');
+
             const msgInput = document.getElementById('msgInput');
             if (currentChatID) {
                 const draftKey = `vox_draft_${[userID, currentChatID].sort().join('_')}`;
