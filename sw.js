@@ -1,104 +1,63 @@
-{
-  "rules": {
-    ".read": false,
-    ".write": false,
+const CACHE_NAME = 'vox-neo-v1.2';
+const ASSETS_TO_CACHE = [
+    './',
+    './index.html',
+    './manifest.json'
+];
 
-    "users": {
-      ".read": "auth != null",
-      "$uid": {
-        ".write": "auth != null && auth.uid === $uid",
-        "name": {
-          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
-        },
-        "voxId": {
-          ".write": "auth != null && auth.uid === $uid && !data.exists()",
-          ".validate": "newData.isString() && newData.val().matches(/^VOX-[A-Z0-9]{4}$/)"
-        },
-        "status": {
-          ".validate": "newData.isString() && newData.val().length <= 50"
-        },
-        "avatar": {
-          ".validate": "newData.isString() && newData.val().length < 200000"
-        }
-      }
-    },
+// Установка Service Worker (кэшируем оболочку)
+self.addEventListener('install', (event) => {
+    self.skipWaiting(); // Принудительно активируем новый SW
+    event.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => {
+            return cache.addAll(ASSETS_TO_CACHE);
+        })
+    );
+});
 
-    "vox_ids": {
-      "$voxId": {
-        ".read": "auth != null",
-        ".write": "auth != null && !data.exists()"
-      }
-    },
+// Активация (удаляем старые кэши)
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cache) => {
+                    if (cache !== CACHE_NAME) {
+                        return caches.delete(cache);
+                    }
+                })
+            );
+        }).then(() => self.clients.claim())
+    );
+});
 
-    "groups": {
-      "$gid": {
-        ".read": "auth != null",
-        ".write": "auth != null && (!data.exists() || data.child('creator').val() === auth.uid)",
-        "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 50" },
-        "type": { ".validate": "newData.val() === 'group' || newData.val() === 'channel'" },
-        "creator": { ".validate": "newData.val() === auth.uid" },
-        "subscribers_count": { ".validate": "newData.isNumber() && newData.val() >= 0" },
-        "members": {
-          "$uid": {
-            ".write": "auth != null && (auth.uid === $uid || root.child('groups').child($gid).child('creator').val() === auth.uid)"
-          }
-        }
-      }
-    },
+// Перехват запросов
+self.addEventListener('fetch', (event) => {
+    // Если запрос идет к Firebase (сообщения, авторизация) — НЕ КЭШИРУЕМ, пускаем напрямую
+    if (event.request.url.includes('firebase') || event.request.url.includes('googleapis')) {
+        return; 
+    }
 
-    "chats": {
-      "$chatId": {
-        ".read": "auth != null && data.child('members').child(auth.uid).exists()",
-        ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
-        "members": {
-          "$uid": {
-            ".write": "auth != null && (auth.uid === $uid || data.parent().child(auth.uid).exists())"
-          }
-        }
-      }
-    },
-
-    "messages": {
-      "$chatId": {
-        ".read": "auth != null && (root.child('user_chats').child(auth.uid).child($chatId).exists() || $chatId === auth.uid + '_FAVORITES' || (root.child('groups').child($chatId).child('members').child(auth.uid).exists()) || (root.child('chats').child($chatId).child('members').child(auth.uid).exists()))",
-        ".write": "auth != null && (root.child('user_chats').child(auth.uid).child($chatId).exists() || $chatId === auth.uid + '_FAVORITES' || (root.child('groups').child($chatId).child('members').child(auth.uid).exists()) || (root.child('chats').child($chatId).child('members').child(auth.uid).exists()))",
-        "$messageId": {
-          ".validate": "newData.hasChildren(['text','sender','timestamp','type','time'])",
-          "sender": { ".validate": "newData.val() === auth.uid" },
-          "text": { ".validate": "newData.isString() && newData.val().length < 150000" },
-          "timestamp": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
-          "type": { ".validate": "newData.val() === 'text' || newData.val() === 'image' || newData.val() === 'voice'" },
-          "time": { ".validate": "newData.isString() && newData.val().length <= 10" },
-          "forwarded": { ".validate": "newData.isBoolean()" },
-          "edited": { ".validate": "newData.isBoolean()" }
-        }
-      }
-    },
-
-    "user_chats": {
-      "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid",
-        "$chatId": { ".validate": "newData.isBoolean()" }
-      }
-    },
-
-    "read_status": {
-      "$chatId": {
-        ".read": "auth != null",
-        "$uid": {
-          ".write": "auth != null && auth.uid === $uid",
-          ".validate": "newData.isBoolean()"
-        }
-      }
-    },
-
-    "typing": {
-      "$chatId": {
-        ".read": "auth != null",
-        "$uid": {
-          ".write": "auth != null && auth.uid === $uid",
-              ".validate": "newData.val() === 'typing' || newData.val() === 'idle'"
+    // Для остальных файлов (HTML, CSS, картинки) — берем из кэша, если есть, иначе качаем
+    event.respondWith(
+        caches.match(event.request).then((response) => {
+            return response || fetch(event.request).then((fetchRes) => {
+                return caches.open(CACHE_NAME).then((cache) => {
+                    // Кэшируем только успешные GET-запросы
+                    if (event.request.method === 'GET' && fetchRes.status === 200) {
+                        cache.put(event.request, fetchRes.clone());
+                    }
+                    return fetchRes;
+                });
+            });
+        }).catch(() => {
+            // Если интернета нет и файла нет в кэше — показываем index.html
+            if (event.request.mode === 'navigate') {
+                return caches.match('./index.html');
+            }
+        })
+    );
+});
+".validate": "newData.val() === 'typing' || newData.val() === 'idle'"
         }
       }
     },
