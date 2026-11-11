@@ -84,15 +84,15 @@
         .chat-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
         .chat-last-msg { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-color); position: relative; overflow: hidden; }
-        .chat-header { padding: 15px 20px; border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); min-height: 70px; cursor: pointer; z-index: 10; position: absolute; top: 0; left: 0; right: 0; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-color); position: relative; overflow: hidden; height: 100%; }
+        .chat-header { padding: 15px 20px; border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); min-height: 70px; cursor: pointer; z-index: 10; flex-shrink: 0; }
         .back-btn { display: none; background: none; border: none; color: var(--accent-blue); font-size: 26px; cursor: pointer; margin-right: 10px; }
         .chat-header-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; overflow: hidden; display: flex; justify-content: center; align-items: center; background: var(--bg-card); color: white; font-weight: bold; }
         .chat-header-avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
         .chat-header-info { font-size: 16px; font-weight: 600; }
         .chat-header-status { font-size: 12px; color: var(--accent-blue); transition: color 0.2s; }
 
-        .messages { flex: 1; padding: 80px 20px 80px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
+        .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
         .message { max-width: 75%; display: flex; flex-direction: column; position: relative; animation: msgSlideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .message.deleting { animation: fadeOutMessage 0.3s ease-in forwards; }
         .message.incoming { align-self: flex-start; }
@@ -109,7 +109,7 @@
         .msg-time { position: absolute; right: 8px; bottom: 4px; font-size: 10px; color: rgba(255,255,255,0.6); display: flex; align-items: center; gap: 3px;}
         .message.incoming .msg-time { color: var(--text-muted); }
 
-        .input-area { padding: 10px 15px; border-top: 1px solid var(--glass-border); display: flex; gap: 8px; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); align-items: center; padding-bottom: max(10px, env(safe-area-inset-bottom)); z-index: 10; position: absolute; bottom: 0; left: 0; right: 0; }
+        .input-area { padding: 10px 15px; border-top: 1px solid var(--glass-border); display: flex; gap: 8px; background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); align-items: center; padding-bottom: max(10px, env(safe-area-inset-bottom)); z-index: 10; flex-shrink: 0; }
         .icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; transition: background-color 0.2s, color 0.2s; }
         .icon-btn:hover { color: var(--accent-blue); background: var(--bg-hover); }
         .input-area input { flex: 1; padding: 12px 18px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 25px; color: var(--text-main); outline: none; font-size: 15px; transition: border-color 0.2s; }
@@ -429,7 +429,7 @@
 
             <div class="messages" id="messagesContainer"></div>
             
-            <button id="scrollDownBtn" onclick="scrollToBottom()" style="position:absolute; bottom:80px; right:20px; width:40px; height:40px; border-radius:50%; background:var(--glass-bg); backdrop-filter:var(--glass-blur); border:1px solid var(--glass-border); color:var(--text-main); cursor:pointer; z-index:100; box-shadow:0 4px 10px rgba(0,0,0,0.3); align-items:center; justify-content:center;">
+            <button id="scrollDownBtn" onclick="scrollToBottom()" style="position:absolute; bottom:80px; right:20px; width:40px; height:40px; border-radius:50%; background:var(--glass-bg); backdrop-filter:var(--glass-blur); border:1px solid var(--glass-border); color:var(--text-main); cursor:pointer; z-index:100; box-shadow:0 4px 10px rgba(0,0,0,0.3); align-items:center; justify-content:center; display:none;">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
             </button>
            
@@ -599,8 +599,19 @@
                 userID = user.uid;
                 loadUserLocalData();
                 try {
-                    const profileSnap = await get(ref(db, 'users/' + userID));
-                    if (!profileSnap.exists()) { setTimeout(() => initApp(), 1000); return; }
+                    let profileSnap = await get(ref(db, 'users/' + userID));
+                    if (!profileSnap.exists()) { 
+                        // Если профиля нет, создаем его
+                        const voxId = 'VOX-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+                        await set(ref(db, 'users/' + userID), { name: 'Гость', voxId: voxId, avatar: "", status: 'В сети VOX' });
+                        profileSnap = await get(ref(db, 'users/' + userID));
+                    }
+                    // Если нет voxId, генерируем
+                    if (!profileSnap.val().voxId) {
+                        const newVoxId = 'VOX-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+                        await update(ref(db, 'users/' + userID), { voxId: newVoxId });
+                    }
+                    
                     document.getElementById('auth-screen').style.display = 'none';
                     document.getElementById('mainApp').style.display = 'flex';
                     initApp();
@@ -1579,6 +1590,15 @@
                 openModal('settings-modal');
             }
         };
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW зарегистрирован:', reg.scope))
+                    .catch(err => console.warn('SW ошибка:', err));
+            });
+        }
 
         window.addEventListener('load', () => {
             let savedTheme = localStorage.getItem('voxTheme') || 'default';
