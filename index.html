@@ -545,6 +545,8 @@
         let recentSearches = [];
         let lastProcessedMsgKey = null;
         let reactionTargetMsgId = null;
+        let actionTargetChatID = null;
+        let actionTargetChatName = null;
 
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
@@ -895,7 +897,27 @@
                 if (friendID !== 'FAVORITES') set(ref(db, 'read_status/' + chatID + '/' + userID), true).catch(() => {});
             });
 
-            loadReactions(chatID);
+            onValue(ref(db, `reactions/${chatID}`), (snap) => {
+                const allReactions = snap.val() || {};
+                document.querySelectorAll('.reactions-container').forEach(el => el.innerHTML = '');
+                
+                Object.keys(allReactions).forEach(msgId => {
+                    const msgReactions = allReactions[msgId];
+                    if (!msgReactions) return;
+                    const counts = {};
+                    Object.values(msgReactions).forEach(emoji => { counts[emoji] = (counts[emoji] || 0) + 1; });
+                    
+                    const container = document.getElementById('reactions-' + msgId);
+                    if (container) {
+                        Object.keys(counts).forEach(emoji => {
+                            const badge = document.createElement('span');
+                            badge.textContent = emoji + ' ' + counts[emoji];
+                            badge.style.cssText = 'background: rgba(57, 139, 255, 0.2); border: 1px solid rgba(57, 139, 255, 0.4); padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;';
+                            container.appendChild(badge);
+                        });
+                    }
+                });
+            });
 
             if (!isGroup && friendID !== 'FAVORITES') {
                 unsubscribeTyping = onValue(ref(db, `typing/${chatID}/${friendID}`), (snap) => {
@@ -1066,34 +1088,6 @@
             container.className = 'reactions-container';
             container.id = 'reactions-' + msgId;
             return container;
-        }
-
-        async function loadReactions(chatID) {
-            try {
-                const snap = await get(ref(db, `reactions/${chatID}`));
-                if (!snap.exists()) return;
-                const allReactions = snap.val();
-                
-                document.querySelectorAll('.reactions-container').forEach(el => el.innerHTML = '');
-                
-                Object.keys(allReactions).forEach(msgId => {
-                    const msgReactions = allReactions[msgId];
-                    if (!msgReactions) return;
-                    
-                    const counts = {};
-                    Object.values(msgReactions).forEach(emoji => { counts[emoji] = (counts[emoji] || 0) + 1; });
-                    
-                    const container = document.getElementById('reactions-' + msgId);
-                    if (container) {
-                        Object.keys(counts).forEach(emoji => {
-                            const badge = document.createElement('span');
-                            badge.textContent = emoji + ' ' + counts[emoji];
-                            badge.style.cssText = 'background: rgba(57, 139, 255, 0.2); border: 1px solid rgba(57, 139, 255, 0.4); padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;';
-                            container.appendChild(badge);
-                        });
-                    }
-                });
-            } catch(e) { console.warn("Ошибки чтения реакций:", e); }
         }
 
         let touchStartX = 0;
@@ -1707,7 +1701,6 @@
             }
         };
 
-        // Функция для меню действий с чатом (ПКМ)
         window.openChatActionMenu = function(chatId, chatName) {
             actionTargetChatID = chatId;
             actionTargetChatName = chatName;
