@@ -1,36 +1,36 @@
-<!DOCTYPE html>
+<!DOCTYPE HTML>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-    <title>VOX NEO 1.3</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#101116">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+<title>VOX NEO 1.3</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#101116">
+<стиль>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
         
-        :root {
-            --bg-color: #101116; --bg-secondary: #151821; --bg-card: #1B1F29; --bg-hover: #242A37;
-            --border-color: #2A3040; --text-main: #F4F6FC; --text-muted: #9299AA;
-            --accent-blue: #398BFF; --accent-purple: #895CFF;
-            --msg-in: #1B1F29; --msg-out: linear-gradient(135deg, #398BFF, #895CFF);
-            --danger: #ef4444; --online: #10b981;
-            --glass-bg: rgba(21, 24, 33, 0.75);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --glass-blur: blur(16px);
+:root {
+--bg-color: #101116; --bg-secondary: #151821; --bg-card: #1B1F29; --bg-hover: #242A37;
+--border-color: #2A3040; --text-main: #F4F6FC; --text-muted: #9299AA;
+--accent-blue: #398BFF; --accent-purple: #895CFF;
+--msg-in: #1B1F29; --msg-out: linear-gradient(135deg, #398BFF, #895CFF);
+--danger: #ef4444; --online: #10b981;
+--glass-bg: rgba(21, 24, 33, 0.75);
+--glass-border: rgba(255, 255, 255, 0.08);
+--glass-blur: blur(16px);
         }
-        body.light-theme { --bg-color: #f8fafc; --bg-secondary: #ffffff; --bg-card: #f1f5f9; --bg-hover: #e2e8f0; --border-color: #cbd5e1; --text-main: #0f172a; --text-muted: #64748b; --msg-in: #ffffff; --msg-out: linear-gradient(135deg, #398BFF, #895CFF); --glass-bg: rgba(255, 255, 255, 0.85); --glass-border: rgba(0, 0, 0, 0.05); }
-        body.cyberpunk-theme { --bg-color: #050505; --bg-secondary: #0d0221; --bg-card: #1a0033; --bg-hover: #2a0055; --border-color: #ff00ff; --text-main: #00ffff; --text-muted: #ff00ff; --msg-in: #1a0033; --msg-out: linear-gradient(135deg, #330066, #660099); --glass-bg: rgba(13, 2, 33, 0.75); --glass-border: rgba(255, 0, 255, 0.2); }
-        body.pink-theme { --bg-color: #fdf2f8; --bg-secondary: #ffffff; --bg-card: #fce7f3; --bg-hover: #fbcfe8; --border-color: #f9a8d4; --text-main: #831843; --text-muted: #db2777; --msg-in: #ffffff; --msg-out: linear-gradient(135deg, #f472b6, #ec4899); --glass-bg: rgba(253, 242, 248, 0.85); --glass-border: rgba(249, 168, 212, 0.3); }
+body.light-theme { --bg-color: #f8fafc; --bg-secondary: #ffffff; --bg-card: #f1f5f9; --bg-hover: #e2e8f0; --border-color: #cbd5e1; --text-main: #0f172a; --text-muted: #64748b; --msg-in: #ffffff; --msg-out: linear-gradient(135deg, #398BFF, #895CFF); --glass-bg: rgba(255, 255, 255, 0.85); --glass-border: rgba(0, 0, 0, 0.05); }
+body.cyberpunk-theme { --bg-color: #050505; --bg-secondary: #0d0221; --bg-card: #1a0033; --bg-hover: #2a0055; --border-color: #ff00ff; --text-main: #00ffff; --text-muted: #ff00ff; --msg-in: #1a0033; --msg-out: linear-gradient(135deg, #330066, #660099); --glass-bg: rgba(13, 2, 33, 0.75); --glass-border: rgba(255, 0, 255, 0.2); }
+body.pink-theme { --bg-color: #fdf2f8; --bg-secondary: #ffffff; --bg-card: #fce7f3; --bg-hover: #fbcfe8; --border-color: #f9a8d4; --text-main: #831843; --text-muted: #db2777; --msg-in: #ffffff; --msg-out: linear-gradient(135deg, #f472b6, #ec4899); --glass-bg: rgba(253, 242, 248, 0.85); --glass-border: rgba(249, 168, 212, 0.3); }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
-        body { background-color: var(--bg-color); color: var(--text-main); height: 100vh; height: 100dvh; display: flex; justify-content: center; align-items: center; overflow: hidden; font-size: 14px; background-image: radial-gradient(circle at 15% 50%, rgba(57, 139, 255, 0.08), transparent 25%), radial-gradient(circle at 85% 30%, rgba(137, 92, 255, 0.08), transparent 25%); background-attachment: fixed; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;}
+body { background-color: var(--bg-color); color: var(--text-main); height: 100vh; height: 100dvh; display: flex; justify-content: center; align-items: center; overflow: hidden; font-size: 14px; background-image: radial-gradient(circle at 15% 50%, rgba(57, 139, 255, 0.08), transparent 25%), radial-gradient(circle at 85% 30%, rgba(137, 92, 255, 0.08), transparent 25%); background-attachment: fixed; }
 
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUpSpring { 0% { transform: translateY(30px) scale(0.95); opacity: 0; } 60% { transform: translateY(-5px) scale(1.02); opacity: 1; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
-        @keyframes popIn { from { opacity: 0; transform: translateY(15px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        @keyframes fadeOutMessage { to { opacity: 0; transform: scale(0.8) translateX(-20px); } }
-        @keyframes msgSlideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUpSpring { 0% { transform: translateY(30px) scale(0.95); opacity: 0; } 60% { transform: translateY(-5px) scale(1.02); opacity: 1; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
+@keyframes popIn { from { opacity: 0; transform: translateY(15px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes fadeOutMessage { to { opacity: 0; transform: scale(0.8) translateX(-20px); } }
+@keyframes msgSlideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
         .vox-logo-v { width: 48px; height: 48px; background: #fff; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(57,139,255,0.35); }
         .vox-logo-v svg { width: 60%; height: 60%; }
@@ -609,7 +609,7 @@
                     if (!voxId) throw new Error('Не удалось создать уникальный ID.');
 
                     try {
-                        await set(ref(db, 'users/' + newUid), { name: email.split('@')[0], voxId: voxId, avatar: tempAvatarBase64 || "", status: 'В сети VOX' });
+                        await set(ref(db, 'users/' + newUid), { name: email.split('@')[0], voxId: voxId, avatar: tempAvatarBase64 || "", status: 'offline' });
                         try { await set(ref(db, 'vox_ids/' + voxId), newUid); } catch(e) {}
                     } catch (profileError) {
                         await userCredential.user.delete();
@@ -636,7 +636,7 @@
                     let profileSnap = await get(ref(db, 'users/' + userID));
                     if (!profileSnap.exists()) { 
                         const voxId = 'VOX-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-                        await set(ref(db, 'users/' + userID), { name: 'Гость', voxId: voxId, avatar: "", status: 'В сети VOX' });
+                        await set(ref(db, 'users/' + userID), { name: 'Гость', voxId: voxId, avatar: "", status: 'offline' });
                         profileSnap = await get(ref(db, 'users/' + userID));
                     }
                     if (!profileSnap.val().voxId) {
@@ -721,8 +721,8 @@
             try {
                 onValue(ref(db, '.info/connected'), (snap) => {
                     if (snap.val() === true && userID) {
-                        set(ref(db, 'status/' + userID), 'online').catch(() => {});
-                        onDisconnect(ref(db, 'status/' + userID)).set('offline').catch(() => {});
+                        set(ref(db, 'users/' + userID + '/status'), 'online').catch(() => {});
+                        onDisconnect(ref(db, 'users/' + userID + '/status')).set('offline').catch(() => {});
                     }
                 });
 
@@ -811,6 +811,11 @@
                 let avatarTxt = friendID === 'FAVORITES' ? '★' : (isChannel ? '📢' : (isGroup ? 'G' : friendName[0].toUpperCase()));
                 let isPinned = pinnedChats.includes(friendID);
                 
+                let isOnline = false;
+                if (!isGroup && friendID !== 'FAVORITES' && usersDB[friendID]) {
+                    isOnline = usersDB[friendID].status === 'online';
+                }
+
                 const div = document.createElement('div');
                 div.className = 'chat-item' + (friendID === currentChatID ? ' active' : '');
                 div.onclick = () => openChat(friendID, friendName, isGroup);
@@ -825,7 +830,24 @@
 
                 const avatarDiv = document.createElement('div');
                 avatarDiv.className = 'avatar';
-                avatarDiv.textContent = avatarTxt;
+                
+                if (!isGroup && friendID !== 'FAVORITES' && usersDB[friendID]?.avatar) {
+                    const img = document.createElement('img');
+                    img.src = usersDB[friendID].avatar;
+                    img.style.display = 'block';
+                    avatarDiv.appendChild(img);
+                } else {
+                    avatarDiv.textContent = avatarTxt;
+                }
+
+                if (isOnline) {
+                    const dot = document.createElement('div');
+                    dot.className = 'status-dot';
+                    dot.style.position = 'absolute';
+                    dot.style.bottom = '0';
+                    dot.style.right = '0';
+                    avatarDiv.appendChild(dot);
+                }
                 
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'chat-info';
@@ -862,7 +884,20 @@
             lastProcessedMsgKey = null;
             
             document.getElementById('headerName').innerText = friendName;
-            document.getElementById('headerAvatarText').innerText = isGroup ? 'G' : friendName[0].toUpperCase();
+            
+            const headerAvatar = document.getElementById('headerAvatarContainer');
+            headerAvatar.innerHTML = ''; 
+            if (!isGroup && friendID !== 'FAVORITES' && usersDB[friendID]?.avatar) {
+                const img = document.createElement('img');
+                img.src = usersDB[friendID].avatar;
+                img.style.display = 'block';
+                headerAvatar.appendChild(img);
+            } else {
+                const txt = document.createElement('span');
+                txt.innerText = isGroup ? 'G' : friendName[0].toUpperCase();
+                headerAvatar.appendChild(txt);
+            }
+
             document.getElementById('sidebar').classList.add('hidden');
             document.getElementById('chatArea').classList.add('active');
             
@@ -1276,6 +1311,7 @@
                         let quality = 0.8;
                         let dataUrl = canvas.toDataURL('image/jpeg', quality);
                         let attempts = 0;
+                        
                         while (dataUrl.length > 600000 && quality > 0.3 && attempts < 10) {
                             quality -= 0.1;
                             dataUrl = canvas.toDataURL('image/jpeg', quality);
@@ -1660,7 +1696,7 @@
             if (unsubscribeGroups) unsubscribeGroups();
             if (unsubscribeUserChats) unsubscribeUserChats();
             if (userID) {
-                try { await set(ref(db, 'status/' + userID), 'offline'); } catch(e) {}
+                try { await set(ref(db, 'users/' + userID + '/status'), 'offline'); } catch(e) {}
             }
             await signOut(auth); 
             location.reload(); 
@@ -1708,43 +1744,43 @@
             if (pinBtn) pinBtn.innerText = pinnedChats.includes(chatId) ? '📌 Открепить' : '📌 Закрепить';
             document.getElementById('chatActionMenu').classList.add('active');
         };
-        window.closeChatActionMenu = function(e) { 
-            if (!e || e.target.id === 'chatActionMenu' || e.type === 'click') {
-                document.getElementById('chatActionMenu').classList.remove('active');
+window.closeChatActionMenu = function(e) {
+if (!e || e.target.id === 'chatActionMenu' || e.type === 'click') {
+document.getElementById('chatActionMenu').classList.remove('active');
             }
         };
-        window.actionTogglePin = function() {
-            if (!actionTargetChatID) return;
-            if (pinnedChats.includes(actionTargetChatID)) {
-                pinnedChats = pinnedChats.filter(id => id !== actionTargetChatID);
-            } else {
-                pinnedChats.push(actionTargetChatID);
+window.actionTogglePin = function() {
+if (!actionTargetChatID) return;
+if (pinnedChats.includes(actionTargetChatID)) {
+pinnedChats = pinnedChats.filter(id => id !== actionTargetChatID);
+} else {
+pinnedChats.push(actionTargetChatID);
             }
-            localStorage.setItem(`voxPinned_${userID}`, JSON.stringify(pinnedChats));
-            renderChatList();
-            closeChatActionMenu();
+localStorage.setItem(`voxPinned_${userID}`, JSON.stringify(pinnedChats));
+renderChatList();
+closeChatActionMenu();
         };
-        window.actionDeleteChat = async function() {
-            if (!actionTargetChatID || !confirm('Удалить чат?')) return;
-            try {
-                await remove(ref(db, `user_chats/${userID}/${actionTargetChatID}`));
-                closeChatActionMenu();
-            } catch(e) { alert('Ошибка: ' + e.message); }
+window.actionDeleteChat = async function() {
+if (!actionTargetChatID || !confirm('Удалить чат?')) return;
+try {
+await remove(ref(db, `user_chats/${userID}/${actionTargetChatID}`));
+closeChatActionMenu();
+} catch(e) { alert('Ошибка: ' + e.message); }
         };
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('SW зарегистрирован:', reg.scope))
-                    .catch(err => console.warn('SW ошибка:', err));
+if ('serviceWorker' in navigator) {
+window.addEventListener('load', () => {
+navigator.serviceWorker.register('./sw.js')
+.then(reg => console.log('SW зарегистрирован:', reg.scope))
+.catch(err => console.warn('SW ошибка:', err));
             });
         }
 
-        window.addEventListener('load', () => {
-            let savedTheme = localStorage.getItem('voxTheme') || 'default';
-            if (!['default', 'light', 'cyberpunk', 'pink'].includes(savedTheme)) savedTheme = 'default';
-            changeTheme(savedTheme);
+window.addEventListener('load', () => {
+let savedTheme = localStorage.getItem('voxTheme') || 'default';
+if (!['default', 'light', 'cyberpunk', 'pink'].includes(savedTheme)) savedTheme = 'default';
+changeTheme(savedTheme);
         });
-    </script>
+</script>
 </body>
 </html>
