@@ -728,7 +728,7 @@
                     usersDB = snapshot.val() || {};
                     updateProfileUI();
                     renderChatList();
-                }, (error) => console.error("Ошибка users:", error));
+                }, (error) => console.warn("Ошибка users:", error.message));
 
                 unsubscribeGroups = onValue(ref(db, 'groups'), (snapshot) => {
                     groupsDB = snapshot.val() || {};
@@ -744,7 +744,7 @@
                         }
                         renderChatList();
                     } catch(e) { console.error("Ошибка в user_chats:", e); }
-                }, (error) => console.error("Ошибка user_chats:", error));
+                }, (error) => console.warn("Ошибка user_chats:", error.message));
             } catch (e) { console.error("Ошибка initApp:", e); }
         }
 
@@ -1705,6 +1705,38 @@
             } else if (tab === 'settings') {
                 openModal('settings-modal');
             }
+        };
+
+        // Функция для меню действий с чатом (ПКМ)
+        window.openChatActionMenu = function(chatId, chatName) {
+            actionTargetChatID = chatId;
+            actionTargetChatName = chatName;
+            const pinBtn = document.getElementById('actionPinBtn');
+            if (pinBtn) pinBtn.innerText = pinnedChats.includes(chatId) ? '📌 Открепить' : '📌 Закрепить';
+            document.getElementById('chatActionMenu').classList.add('active');
+        };
+        window.closeChatActionMenu = function(e) { 
+            if (!e || e.target.id === 'chatActionMenu' || e.type === 'click') {
+                document.getElementById('chatActionMenu').classList.remove('active');
+            }
+        };
+        window.actionTogglePin = function() {
+            if (!actionTargetChatID) return;
+            if (pinnedChats.includes(actionTargetChatID)) {
+                pinnedChats = pinnedChats.filter(id => id !== actionTargetChatID);
+            } else {
+                pinnedChats.push(actionTargetChatID);
+            }
+            localStorage.setItem(`voxPinned_${userID}`, JSON.stringify(pinnedChats));
+            renderChatList();
+            closeChatActionMenu();
+        };
+        window.actionDeleteChat = async function() {
+            if (!actionTargetChatID || !confirm('Удалить чат?')) return;
+            try {
+                await remove(ref(db, `user_chats/${userID}/${actionTargetChatID}`));
+                closeChatActionMenu();
+            } catch(e) { alert('Ошибка: ' + e.message); }
         };
 
         if ('serviceWorker' in navigator) {
