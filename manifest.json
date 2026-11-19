@@ -1,12 +1,44 @@
 {
   "name": "VOX NEO",
   "short_name": "VOX",
-  "description": "Быстрый, безопасный и красивый мессенджер VOX NEO",
+  "description": "Быстрый, безопасный и красивый мессенджер. Общайтесь без границ.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#101116",
-  "theme_color": "#398BFF",
   "orientation": "portrait",
+  "background_color": "#101116",
+  "theme_color": "#101116",
   "lang": "ru",
-  "dir": "ltr"
+  "dir": "ltr",
+  "categories": ["social", "communication"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Мои чаты",
+      "short_name": "Чаты",
+      "description": "Перейти к списку чатов",
+      "url": "./index.html?tab=chats",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Настройки",
+      "short_name": "Настройки",
+      "description": "Открыть настройки профиля",
+      "url": "./index.html?tab=settings",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }
