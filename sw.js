@@ -1,8 +1,9 @@
-const CACHE_NAME = 'vox-neo-v1.2';
+const CACHE_NAME = 'vox-neo-v1.4';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
-    './manifest.json'
+    './manifest.json',
+    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap'
 ];
 
 // Установка Service Worker (кэшируем оболочку)
@@ -37,37 +38,27 @@ self.addEventListener('fetch', (event) => {
         return; 
     }
 
-    // Для остальных файлов (HTML, CSS, картинки) — берем из кэша, если есть, иначе качаем
+    // Для остальных файлов (HTML, CSS, картинки) — Network First (Сначала сеть, потом кэш)
+    // Это нужно, чтобы при обновлении кода ты сразу видел новый дизайн
     event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request).then((fetchRes) => {
-                return caches.open(CACHE_NAME).then((cache) => {
-                    // Кэшируем только успешные GET-запросы
-                    if (event.request.method === 'GET' && fetchRes.status === 200) {
-                        cache.put(event.request, fetchRes.clone());
-                    }
-                    return fetchRes;
+        fetch(event.request).then((response) => {
+            // Если ответ успешный, обновляем кэш
+            if (event.request.method === 'GET' && response.status === 200) {
+                const responseClone = response.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(event.request, responseClone);
                 });
-            });
-        }).catch(() => {
-            // Если интернета нет и файла нет в кэше — показываем index.html
-            if (event.request.mode === 'navigate') {
-                return caches.match('./index.html');
             }
+            return response;
+        }).catch(() => {
+            // Если интернета нет, отдаем из кэша
+            return caches.match(event.request).then((cachedResponse) => {
+                if (cachedResponse) return cachedResponse;
+                // Если файла нет в кэше и интернета нет, показываем главную
+                if (event.request.mode === 'navigate') {
+                    return caches.match('./index.html');
+                }
+            });
         })
     );
 });
-".validate": "newData.val() === 'typing' || newData.val() === 'idle'"
-        }
-      }
-    },
-
-    "status": {
-      ".read": "auth != null",
-      "$uid": {
-        ".write": "auth != null && auth.uid === $uid",
-        ".validate": "newData.val() === 'online' || newData.val() === 'offline'"
-      }
-    }
-  }
-}
