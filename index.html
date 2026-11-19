@@ -579,7 +579,8 @@
     </div>
 
     <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="sendImage(event)">
- <script type="module">
+
+    <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getDatabase, ref, push, onValue, set, get, update, remove, serverTimestamp, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -634,7 +635,6 @@
         let replyToId = null;
         let currentLanguage = localStorage.getItem('voxLang') || 'ru';
 
-        // === ЯЗЫКИ (I18N) ===
         const translations = {
             ru: {
                 login_btn: "ВОЙТИ", register_btn: "СОЗДАТЬ АККАУНТ", login_sub: "Вход в аккаунт", reg_sub: "Регистрация",
@@ -691,7 +691,8 @@
                 if (dict[key]) el.placeholder = dict[key];
             });
             
-            document.getElementById('currentLangLabel').innerText = currentLanguage === 'ru' ? 'Русский' : 'English';
+            const langLabel = document.getElementById('currentLangLabel');
+            if (langLabel) langLabel.innerText = currentLanguage === 'ru' ? 'Русский' : 'English';
             
             const authBtn = document.querySelector('.auth-box button');
             const authSub = document.getElementById('auth-subtitle');
@@ -707,7 +708,6 @@
             }
         }
 
-        // === TOAST ===
         window.showToast = function(message, type = 'info') {
             const container = document.getElementById('toast-container');
             if (container.children.length > 3) container.innerHTML = '';
@@ -718,7 +718,6 @@
             setTimeout(() => { toast.remove(); }, 3000);
         };
 
-        // === ЗВУКИ ===
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
         function playSound(type) {
@@ -945,8 +944,10 @@
         function loadPrivacySettings() {
             const myData = usersDB[userID];
             if (myData && myData.privacy) {
-                document.getElementById('privacyStatusToggle').checked = myData.privacy.hideStatus || false;
-                document.getElementById('privacyProfileToggle').checked = myData.privacy.hideProfile || false;
+                const st = document.getElementById('privacyStatusToggle');
+                const pf = document.getElementById('privacyProfileToggle');
+                if(st) st.checked = myData.privacy.hideStatus || false;
+                if(pf) pf.checked = myData.privacy.hideProfile || false;
             }
         }
 
@@ -1134,22 +1135,24 @@
             currentChatID = friendID;
             lastProcessedMsgKey = null;
             replyToId = null;
-            document.getElementById('replyBlock').style.display = 'none';
+            const rb = document.getElementById('replyBlock');
+            if (rb) rb.style.display = 'none';
             
             document.getElementById('headerName').innerText = friendName;
-            document.getElementById('searchChatBtn').style.display = 'block';
             
             const headerAvatar = document.getElementById('headerAvatarContainer');
-            headerAvatar.innerHTML = ''; 
-            if (!isGroup && friendID !== 'FAVORITES' && usersDB[friendID]?.avatar) {
-                const img = document.createElement('img');
-                img.src = usersDB[friendID].avatar;
-                img.style.display = 'block';
-                headerAvatar.appendChild(img);
-            } else {
-                const txt = document.createElement('span');
-                txt.innerText = isGroup ? 'G' : friendName[0].toUpperCase();
-                headerAvatar.appendChild(txt);
+            if (headerAvatar) {
+                headerAvatar.innerHTML = ''; 
+                if (!isGroup && friendID !== 'FAVORITES' && usersDB[friendID]?.avatar) {
+                    const img = document.createElement('img');
+                    img.src = usersDB[friendID].avatar;
+                    img.style.display = 'block';
+                    headerAvatar.appendChild(img);
+                } else {
+                    const txt = document.createElement('span');
+                    txt.innerText = isGroup ? 'G' : friendName[0].toUpperCase();
+                    headerAvatar.appendChild(txt);
+                }
             }
 
             document.getElementById('sidebar').classList.add('hidden');
@@ -1161,8 +1164,10 @@
             const isChannel = isGroup && groupsDB[friendID]?.type === 'channel';
             const isCreator = isGroup && groupsDB[friendID]?.creator === userID;
             
-            document.getElementById('inviteBtn').style.display = (isGroup && !isChannel && isCreator) ? 'block' : 'none';
-            document.getElementById('manageBtn').style.display = (isGroup && isCreator) ? 'block' : 'none';
+            const inviteBtn = document.getElementById('inviteBtn');
+            const manageBtn = document.getElementById('manageBtn');
+            if (inviteBtn) inviteBtn.style.display = (isGroup && !isChannel && isCreator) ? 'block' : 'none';
+            if (manageBtn) manageBtn.style.display = (isGroup && isCreator) ? 'block' : 'none';
             
             const activeTab = document.querySelector('.chat-tab.active')?.innerText || 'Все';
             renderChatList(activeTab);
@@ -1170,7 +1175,9 @@
             const draftKey = `vox_draft_${[userID, friendID].sort().join('_')}`;
             const savedDraft = localStorage.getItem(draftKey);
             const msgInput = document.getElementById('msgInput');
-            if (savedDraft) { msgInput.value = savedDraft; } else { msgInput.value = ''; }
+            if (msgInput) {
+                if (savedDraft) { msgInput.value = savedDraft; } else { msgInput.value = ''; }
+            }
 
             let chatID = friendID === 'FAVORITES' ? userID + '_FAVORITES' : (isGroup ? friendID : [userID, friendID].sort().join('_'));
             
@@ -1185,7 +1192,9 @@
             renderChatList(activeTab);
 
             currentPinnedMsgId = null;
-            document.getElementById('pinnedBar').style.display = 'none';
+            const pinnedBar = document.getElementById('pinnedBar');
+            if (pinnedBar) pinnedBar.style.display = 'none';
+            
             try {
                 const pinSnap = await get(ref(db, `chats/${chatID}/pinned`));
                 if (pinSnap.exists()) {
@@ -1193,8 +1202,9 @@
                     const msgSnap = await get(ref(db, `messages/${chatID}/${pinId}`));
                     if (msgSnap.exists()) {
                         currentPinnedMsgId = pinId;
-                        document.getElementById('pinnedText').innerText = msgSnap.val().text.substring(0, 50);
-                        document.getElementById('pinnedBar').style.display = 'flex';
+                        const pt = document.getElementById('pinnedText');
+                        if (pt) pt.innerText = msgSnap.val().text.substring(0, 50);
+                        if (pinnedBar) pinnedBar.style.display = 'flex';
                     }
                 }
             } catch(e) {}
@@ -1229,11 +1239,13 @@
             if (!isGroup && friendID !== 'FAVORITES') {
                 unsubscribeTyping = onValue(ref(db, `typing/${chatID}/${friendID}`), (snap) => {
                     const statusEl = document.getElementById('typingStatus');
-                    if (snap.val() === 'typing') {
-                        statusEl.innerHTML = 'печатает...';
-                        statusEl.style.color = 'var(--accent-blue)';
-                    } else {
-                        statusEl.innerText = '';
+                    if (statusEl) {
+                        if (snap.val() === 'typing') {
+                            statusEl.innerHTML = 'печатает...';
+                            statusEl.style.color = 'var(--accent-blue)';
+                        } else {
+                            statusEl.innerText = '';
+                        }
                     }
                 });
             }
@@ -1280,6 +1292,8 @@
 
         function renderMessages(msgsObj, isGroup) {
             const container = document.getElementById('messagesContainer');
+            if (!container) return;
+            
             const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
             
             container.innerHTML = '';
@@ -1378,15 +1392,21 @@
         }
 
         window.openLightbox = function(src) {
-            document.getElementById('lightboxImg').src = src;
-            document.getElementById('lightbox').style.display = 'flex';
+            const lb = document.getElementById('lightbox');
+            const img = document.getElementById('lightboxImg');
+            if (lb && img) {
+                img.src = src;
+                lb.style.display = 'flex';
+            }
         };
         window.closeLightbox = function() {
-            document.getElementById('lightbox').style.display = 'none';
+            const lb = document.getElementById('lightbox');
+            if (lb) lb.style.display = 'none';
         };
 
         window.toggleSearchInChat = function() {
             const bar = document.getElementById('searchInChatBar');
+            if (!bar) return;
             bar.classList.toggle('active');
             if (bar.classList.contains('active')) {
                 document.getElementById('searchInChatInput').focus();
@@ -1397,7 +1417,9 @@
         };
 
         window.searchInChat = function() {
-            const q = document.getElementById('searchInChatInput').value.toLowerCase();
+            const input = document.getElementById('searchInChatInput');
+            if (!input) return;
+            const q = input.value.toLowerCase();
             document.querySelectorAll('.message').forEach(msgDiv => {
                 const text = msgDiv.innerText.toLowerCase();
                 if (q && text.includes(q)) {
@@ -1420,13 +1442,16 @@
             if (currentPinnedMsgId === ctxMsgKey) {
                 await remove(ref(db, `chats/${chatID}/pinned`));
                 currentPinnedMsgId = null;
-                document.getElementById('pinnedBar').style.display = 'none';
+                const pb = document.getElementById('pinnedBar');
+                if (pb) pb.style.display = 'none';
                 showToast('Сообщение откреплено');
             } else {
                 await set(ref(db, `chats/${chatID}/pinned`), ctxMsgKey);
                 currentPinnedMsgId = ctxMsgKey;
-                document.getElementById('pinnedText').innerText = ctxMsgData.text.substring(0, 50);
-                document.getElementById('pinnedBar').style.display = 'flex';
+                const pt = document.getElementById('pinnedText');
+                if (pt && ctxMsgData) pt.innerText = ctxMsgData.text.substring(0, 50);
+                const pb = document.getElementById('pinnedBar');
+                if (pb) pb.style.display = 'flex';
                 showToast('Сообщение закреплено', 'success');
             }
             closeCtxMenu();
@@ -1506,9 +1531,12 @@
                     const msgObj = ctxMsgData;
                     if (msgObj) {
                         replyToId = msgId;
-                        document.getElementById('replyAuthor').innerText = usersDB[msgObj.sender]?.name || 'Вы';
-                        document.getElementById('replyText').innerText = (msgObj.text || '').substring(0, 40);
-                        document.getElementById('replyBlock').style.display = 'block';
+                        const ra = document.getElementById('replyAuthor');
+                        const rt = document.getElementById('replyText');
+                        const rb = document.getElementById('replyBlock');
+                        if (ra) ra.innerText = usersDB[msgObj.sender]?.name || 'Вы';
+                        if (rt) rt.innerText = (msgObj.text || '').substring(0, 40);
+                        if (rb) rb.style.display = 'block';
                         document.getElementById('msgInput').focus();
                     }
                 }
@@ -1550,9 +1578,12 @@
         window.ctxReply = function() {
             if (!ctxMsgData) return;
             replyToId = ctxMsgKey;
-            document.getElementById('replyAuthor').innerText = usersDB[ctxMsgData.sender]?.name || 'Вы';
-            document.getElementById('replyText').innerText = (ctxMsgData.text || '').substring(0, 40);
-            document.getElementById('replyBlock').style.display = 'block';
+            const ra = document.getElementById('replyAuthor');
+            const rt = document.getElementById('replyText');
+            const rb = document.getElementById('replyBlock');
+            if (ra) ra.innerText = usersDB[ctxMsgData.sender]?.name || 'Вы';
+            if (rt) rt.innerText = (ctxMsgData.text || '').substring(0, 40);
+            if (rb) rb.style.display = 'block';
             document.getElementById('msgInput').focus();
             closeCtxMenu();
         };
@@ -1646,7 +1677,8 @@
                     setTimeout(() => scrollToBottom(), 100);
                 }
                 replyToId = null;
-                document.getElementById('replyBlock').style.display = 'none';
+                const rb = document.getElementById('replyBlock');
+                if (rb) rb.style.display = 'none';
             } catch (e) { showToast('Ошибка: ' + e.message, 'error'); } finally { isSending = false; }
         };
 
