@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-    <title>VOX NEO 1.4</title>
+    <title>VOX NEO 1.5</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#101116">
     <style>
@@ -27,6 +27,7 @@
         .toast { background: var(--glass-bg); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); color: var(--text-main); padding: 12px 24px; border-radius: 30px; font-weight: 500; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), fadeOut 0.3s 2.7s forwards; }
         .toast.error { border-color: var(--danger); color: var(--danger); }
         .toast.success { border-color: var(--online); color: var(--online); }
+        .toast.notify { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(57,139,255,0.1); }
         @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeOut { to { opacity: 0; transform: translateY(-20px); } }
 
@@ -360,7 +361,7 @@
                 <svg viewBox="0 0 24 24" fill="none"><path d="M4 5L12 19L20 5" stroke="#398BFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
             <h2 style="margin-bottom: 5px;">VOX</h2>
-            <div style="color: var(--accent-blue); font-weight: 600; margin-bottom: 15px;">NEO 1.4</div>
+            <div style="color: var(--accent-blue); font-weight: 600; margin-bottom: 15px;">NEO 1.5</div>
             <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;" data-i18n="about_desc">
                 Быстрый, безопасный и красивый мессенджер.
             </p>
@@ -635,6 +636,7 @@
         let replyToId = null;
         let currentLanguage = localStorage.getItem('voxLang') || 'ru';
 
+        // === ЯЗЫКИ (I18N) ===
         const translations = {
             ru: {
                 login_btn: "ВОЙТИ", register_btn: "СОЗДАТЬ АККАУНТ", login_sub: "Вход в аккаунт", reg_sub: "Регистрация",
@@ -708,6 +710,7 @@
             }
         }
 
+        // === TOAST ===
         window.showToast = function(message, type = 'info') {
             const container = document.getElementById('toast-container');
             if (container.children.length > 3) container.innerHTML = '';
@@ -718,6 +721,7 @@
             setTimeout(() => { toast.remove(); }, 3000);
         };
 
+        // === ЗВУКИ ===
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
         function playSound(type) {
@@ -777,7 +781,7 @@
                     if (!voxId) throw new Error('Не удалось создать уникальный ID.');
 
                     try {
-                        await set(ref(db, 'users/' + newUid), { name: email.split('@')[0], voxId: voxId, avatar: tempAvatarBase64 || "", status: 'offline', privacy: { hideStatus: false, hideProfile: false } });
+                        await set(ref(db, 'users/' + newUid), { name: email.split('@')[0], voxId: voxId, avatar: tempAvatarBase64 || "", status: 'offline', lastSeen: Date.now(), privacy: { hideStatus: false, hideProfile: false } });
                         try { await set(ref(db, 'vox_ids/' + voxId), newUid); } catch(e) {}
                     } catch (profileError) {
                         await userCredential.user.delete();
@@ -804,7 +808,7 @@
                     let profileSnap = await get(ref(db, 'users/' + userID));
                     if (!profileSnap.exists()) { 
                         const voxId = 'VOX-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-                        await set(ref(db, 'users/' + userID), { name: 'Гость', voxId: voxId, avatar: "", status: 'offline', privacy: { hideStatus: false, hideProfile: false } });
+                        await set(ref(db, 'users/' + userID), { name: 'Гость', voxId: voxId, avatar: "", status: 'offline', lastSeen: Date.now(), privacy: { hideStatus: false, hideProfile: false } });
                         profileSnap = await get(ref(db, 'users/' + userID));
                     }
                     if (!profileSnap.val().voxId) {
@@ -895,6 +899,7 @@
                         if (!myData?.privacy?.hideStatus) {
                             set(ref(db, 'users/' + userID + '/status'), 'online').catch(() => {});
                             onDisconnect(ref(db, 'users/' + userID + '/status')).set('offline').catch(() => {});
+                            onDisconnect(ref(db, 'users/' + userID + '/lastSeen')).set(Date.now()).catch(() => {});
                         }
                     }
                 });
@@ -1388,6 +1393,22 @@
             
             if (isAtBottom) {
                 setTimeout(() => container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }), 50);
+            }
+
+            if (currentChatID && usersDB[currentChatID]) {
+                const headerStatus = document.getElementById('typingStatus');
+                if (headerStatus && !isGroup && !currentChatID.includes('_FAVORITES')) {
+                     const fData = usersDB[currentChatID];
+                     if (fData.privacy?.hideStatus) {
+                         headerStatus.innerText = '';
+                     } else if (fData.status === 'online') {
+                         headerStatus.innerText = 'В сети';
+                         headerStatus.style.color = 'var(--online)';
+                     } else {
+                         headerStatus.innerText = 'Был(а) недавно';
+                         headerStatus.style.color = 'var(--text-muted)';
+                     }
+                }
             }
         }
 
@@ -2006,6 +2027,7 @@
             if (!currentChatID) return;
             const isGroup = groupsDB[currentChatID] !== undefined;
             const friendData = usersDB[currentChatID] || groupsDB[currentChatID] || {};
+            
             if (friendData.privacy?.hideProfile) {
                 document.getElementById('viewProfileName').innerText = 'Скрытый профиль';
                 document.getElementById('viewProfileId').innerText = '***';
@@ -2013,8 +2035,40 @@
             } else {
                 document.getElementById('viewProfileName').innerText = friendData.name || 'Собеседник';
                 document.getElementById('viewProfileId').innerText = friendData.voxId || currentChatID;
-                document.getElementById('viewProfileStatus').innerText = friendData.status || (isGroup ? 'Группа' : 'был(а) недавно');
+                
+                let statusText = friendData.status || (isGroup ? 'Группа' : 'был(а) недавно');
+                
+                if (!isGroup && friendData.privacy?.hideStatus !== true) {
+                    if (friendData.status === 'online') {
+                        statusText = 'В сети';
+                    } else if (friendData.lastSeen) {
+                        const date = new Date(friendData.lastSeen);
+                        const timeStr = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                        const dateStr = date.toLocaleDateString('ru-RU');
+                        if (date.toDateString() === new Date().toDateString()) {
+                            statusText = `Был(а) в ${timeStr}`;
+                        } else {
+                            statusText = `Был(а) ${dateStr} в ${timeStr}`;
+                        }
+                    }
+                }
+                document.getElementById('viewProfileStatus').innerText = statusText;
             }
+            
+            const avatarContainer = document.getElementById('viewProfileAvatar');
+            const img = document.getElementById('viewProfileAvatarImg');
+            const txt = document.getElementById('viewProfileAvatarText');
+            
+            if (friendData.avatar) {
+                img.src = friendData.avatar;
+                img.style.display = 'block';
+                txt.style.display = 'none';
+            } else {
+                img.style.display = 'none';
+                txt.innerText = (friendData.name || '?')[0].toUpperCase();
+                txt.style.display = 'flex';
+            }
+            
             openModal('view-profile-modal');
         };
 
@@ -2142,7 +2196,10 @@
             if (unsubscribeUserChats) unsubscribeUserChats();
             if (unsubscribeReactions) unsubscribeReactions();
             if (userID) {
-                try { await set(ref(db, 'users/' + userID + '/status'), 'offline'); } catch(e) {}
+                try { 
+                    await set(ref(db, 'users/' + userID + '/status'), 'offline'); 
+                    await set(ref(db, 'users/' + userID + '/lastSeen'), Date.now()); 
+                } catch(e) {}
             }
             await signOut(auth); 
             location.reload(); 
