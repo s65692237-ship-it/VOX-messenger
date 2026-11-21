@@ -10,7 +10,6 @@
   "lang": "ru",
   "dir": "ltr",
   "categories": ["social", "communication"],
-  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icon-192.png",
@@ -23,22 +22,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Мои чаты",
-      "short_name": "Чаты",
-      "description": "Перейти к списку чатов",
-      "url": "./index.html?tab=chats",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Настройки",
-      "short_name": "Настройки",
-      "description": "Открыть настройки профиля",
-      "url": "./index.html?tab=settings",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
