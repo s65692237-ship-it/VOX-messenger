@@ -9,7 +9,10 @@
   "theme_color": "#101116",
   "lang": "ru",
   "dir": "ltr",
-  "categories": ["social", "communication"],
+  "categories": [
+    "social",
+    "communication"
+  ],
   "icons": [
     {
       "src": "icon-192.png",
